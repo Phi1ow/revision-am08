@@ -985,7 +985,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
     <div class="prose">
       <p>Entre A et B, une machine ajoute ou retire de l'énergie : « ce qui reste à la fin du mois = ce qu'on avait + les apports − les dépenses ».</p>
       <div class="math-scroll">\[p_{t,B} = p_{t,A} + \Delta p_{pompe} - \Delta p_{turbine} \qquad \mathcal P = Q_v\,\Delta p = \rho g H_p Q_v \ \ \text{[W]}\]</div>
-      <p>La « charge » H<sub>p</sub> = Δp/ρg s'exprime en mètres de colonne de fluide. Le rendement relie puissance hydraulique et puissance mécanique : \(\eta = \mathcal P_{hydr}/\mathcal P_{méca}\) pour une pompe.</p>
+      <p>La « charge » H<sub>p</sub> = Δp/ρg s'exprime en mètres de colonne de fluide. Le rendement relie puissance hydraulique et puissance mécanique : \(\eta = \mathcal P_{hydr}/\mathcal P_{\mathrm{m\acute{e}ca}}\) pour une pompe.</p>
     </div>
     <figure class="lab" style="margin:0">
       <div class="stage"><svg id="pm-svg" viewBox="0 0 680 300" role="img" aria-label="Lac, conduite forcée, turbine et bilan d'énergie"></svg></div>
@@ -1502,7 +1502,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
         <p>Bernoulli généralisé : la charge de la pompe sert à faire varier p, z et V.</p>
         <div class="math-scroll">\[\Delta P_{pompe} = (P_2 - P_1) + \rho g (z_2 - z_1) + \tfrac12\rho(V_2^2 - V_1^2)\]</div>
         <p>Q = 0,15 m³/s → V₁ = 2,12 m/s, V₂ = 4,77 m/s. P₂ − P₁ = 70 000 + 13 600 × 10 × 0,2 = 97 200 Pa ; ρgΔz = 12 200 Pa ; ½ρ(V₂² − V₁²) = 9150 Pa.</p>
-        <div class="math-scroll">\[\Delta P_{pompe} = 1{,}185\cdot10^5\ \text{Pa} \quad \mathcal P_{hydr} = Q\,\Delta P = 17{,}8\ \text{kW} \quad \mathcal P_{méca} = \frac{17{,}8}{0{,}8} = 22{,}2\ \text{kW}\]</div>
+        <div class="math-scroll">\[\Delta P_{pompe} = 1{,}185\cdot10^5\ \text{Pa} \quad \mathcal P_{hydr} = Q\,\Delta P = 17{,}8\ \text{kW} \quad \mathcal P_{\mathrm{m\acute{e}ca}} = \frac{17{,}8}{0{,}8} = 22{,}2\ \text{kW}\]</div>
       </div></details>
     </div>
   </article>
@@ -4171,7 +4171,7 @@ const ANS_FIG = {};
         seg('c-pg', 164, 0, 124, 40).replace(/x="300"/, 'x="320"'), seg('c-pd', 164, 0, 22, 102).replace(/x="300"/, 'x="320"'), seg('c-ps', 24, 140, 22, 2).replace(/x="300"/, 'x="320"'),
         '<line x1="312" y1="24" x2="348" y2="24" class="line-tot"/>', T(331, 16, 'p_{atm}', 'mid small'),
         T(314, 150, 'ρg·4 m', 'end lbl-pg small'), shown(.55, .97, D, T(314, 80, '½ρV*²', 'end lbl-pd small') + T(314, 30, 'p_{vs}', 'end lbl-l small')),
-        shown(.6, .97, D, T(226, 96, 'p_{B} = p_{vs}', 'lbl-l small') + T(216, 178, 'V* = 10,9 m/s', 'small') + T(216, 191, 'Q* = 85 L/s', 'lbl-n small'))
+        shown(.6, .97, D, T(226, 96, 'p_{B} = p_{vs}', 'lbl-l small') + T(216, 178, 'V* = 10,9 m/s', 'small') + T(216, 191, 'Q* = 86 L/s', 'lbl-n small'))
       ].join('')),
       cap: 'Entre A et le sommet B, la charge reste p_{atm} : il faut payer la montée de 4 m (vert) et l\'énergie cinétique (magenta) en prenant sur p. Le débit est maximal quand p_B tombe à p_{vs} : il ne reste presque plus de bleu.'
     };
