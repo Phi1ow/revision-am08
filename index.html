@@ -384,6 +384,16 @@ footer { padding-block: 40px 60px; color: var(--muted); font-size: 13.5px; }
 .line-loss { stroke: var(--loss); stroke-width: 2.6; fill: none; }
 .line-piezo { stroke: var(--ps); stroke-width: 2; fill: none; stroke-dasharray: 7 4; }
 .flow-dash { stroke: color-mix(in srgb, var(--node) 70%, transparent); stroke-width: 1.6; stroke-dasharray: 3 9; fill: none; }
+/* Lignes de courant : fines et bleues ; la ligne sur laquelle on écrit Bernoulli est magenta (comme la particule suivie) */
+.sline { stroke: color-mix(in srgb, var(--node) 62%, transparent); stroke-width: 1.2; fill: none; stroke-dasharray: 9 7; animation: sl-flow 1.5s linear infinite; }
+.sline.main { stroke: var(--pd); stroke-width: 2; }
+.sline.still { stroke-dasharray: none; animation: none; opacity: .75; }
+.sline.js { animation: none; }
+.sline-chev { stroke: color-mix(in srgb, var(--node) 80%, transparent); stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.sline-chev.main { stroke: var(--pd); stroke-width: 2; }
+.inset { fill: var(--sheet); stroke: var(--rule); stroke-width: 1; }
+@keyframes sl-flow { to { stroke-dashoffset: -16; } }
+@media (prefers-reduced-motion: reduce) { .sline { animation: none; } }
 .particle { fill: var(--node); }
 .particle.hot { fill: var(--pd); stroke: var(--sheet); stroke-width: 1.5; }
 .probe { fill: var(--sheet); stroke: var(--ink); stroke-width: 2; }
@@ -874,7 +884,9 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
       </div>
     </figure>
     <div class="takeaways">
-      <div><b>Ligne de courant</b>Courbe tangente en chaque point à la vitesse : dx/u = dy/v = dz/w. En stationnaire, elle se confond avec la trajectoire.</div>
+      <div><b>Ligne de courant</b>Courbe tangente en chaque point à la vitesse : dx/u = dy/v = dz/w. En stationnaire, elle se confond avec la trajectoire : sur la figure, la particule magenta reste sur sa ligne.</div>
+      <div><b>Lire les lignes de courant</b>Le fluide ne les traverse jamais : entre deux lignes voisines, le débit est le même d'un bout à l'autre. Là où elles se resserrent, la vitesse augmente (convergent, col du Venturi) ; là où elles sont droites et parallèles, p + ρgz est le même sur toute la section (C.3).</div>
+      <div><b>Sur les figures du chapitre</b>Lignes bleues : quelques lignes de courant, avec le sens de l'écoulement. Ligne magenta : celle sur laquelle on écrit Bernoulli, de A à B. Bernoulli ne relie que deux points d'une même ligne (ou d'un écoulement irrotationnel).</div>
       <div><b>Exemple du ballon-sonde</b>Il monte à V<sub>0</sub> et mesure T(t) = T<sub>0</sub> − αt dans une atmosphère stationnaire : −α = 0 + V<sub>0</sub> dT/dz, donc T(z) = T<sub>0</sub> − (α/V<sub>0</sub>) z.</div>
     </div>
   </div>
@@ -909,6 +921,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
     <div class="prose">
       <p><strong>Propriété fondamentale</strong> : sur une section où les lignes de courant sont parallèles, \(p_g = p + \rho g z\) est constante. La pression y est hydrostatique, comme au repos. C'est l'outil qui relie un écoulement à un tube au repos, ou qui donne \(p = p_{atm}\) dans un jet à l'air libre.</p>
       <p>Le cours vidange un grand réservoir dans une conduite. Tube 1, affleurant la paroi : il ne voit que \(p + \rho g z\), donc \(z_{B'} = z_A - V^2/2g\). Tube 2, tourné face à l'écoulement : son entrée est un <strong>point d'arrêt</strong> (V = 0), il voit la charge totale, donc \(z_{C'} = z_A\).</p>
+      <p>Sur la figure, les lignes de courant partent toutes de la surface libre, où la charge vaut \(\rho g z_A\) (p<sub>atm</sub> en relatif, V ≈ 0) : elles ont donc toutes la même charge. Sous le tube 1, elles sont parallèles à la paroi, ce qui autorise à passer de l'axe à l'entrée du tube par p + ρgz = cste. La ligne de l'axe (magenta) finit sur le nez du tube 2 : c'est elle qui définit le point d'arrêt, les lignes voisines s'écartent et contournent le tube.</p>
     </div>
     <figure class="lab" style="margin:0">
       <div class="stage"><svg id="pg-svg" viewBox="0 0 680 320" role="img" aria-label="Réservoir, conduite, tube piézométrique et tube de Pitot"></svg></div>
@@ -931,6 +944,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
       <p>Ligne de courant de la surface A (p<sub>atm</sub>) au jet B (p<sub>atm</sub> par la propriété de p<sub>g</sub>), plus la conservation du débit \(V_A S_A = V_B S_B\) :</p>
       <div class="math-scroll">\[V_B = \sqrt{\frac{2gh}{1 - (S_B/S_A)^2}} \;\approx\; \sqrt{2gh} \quad\text{si } S_A \gg S_B, \qquad S_B = C_c\,S \ \ (0{,}6 \le C_c \le 1)\]</div>
       <p>B est pris dans la <strong>section contractée</strong> du jet, là où les lignes de courant redeviennent parallèles. Sa section vaut C<sub>c</sub> fois celle de l'orifice.</p>
+      <p>Pourquoi le jet se contracte : les lignes de courant arrivent vers l'orifice de toute la hauteur du réservoir, certaines en longeant la paroi jusqu'au bord de l'orifice. Une particule ne peut pas tourner à angle droit au bord de l'orifice : les lignes continuent à converger après la sortie, et le jet ne devient « parallèle » qu'un peu plus loin, en B. Avant B, la pression dans le jet n'est pas encore p<sub>atm</sub> ; en B, si.</p>
     </div>
     <figure class="lab" style="margin:0">
       <div class="stage"><svg id="to-svg" viewBox="0 0 680 320" role="img" aria-label="Réservoir avec orifice latéral et jet parabolique"></svg></div>
@@ -961,7 +975,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
           <div class="ctl"><label for="ve-r">Section col / amont <output id="ve-r-out"></output></label><input id="ve-r" type="range" min="0.25" max="1" step="0.01" value="0.4"></div>
         </div>
         <div class="readout" id="ve-read"></div>
-        <p class="hint">Conduite de 8 cm. La courbe bleue pointillée est la ligne piézométrique p/ρg + z : elle plonge au col et remonte ensuite (fluide parfait : retour au niveau initial).</p>
+        <p class="hint">Conduite de 8 cm. Les lignes de courant se resserrent au col dans le rapport des sections : même débit entre deux lignes, donc vitesse plus grande. La courbe bleue pointillée est la ligne piézométrique p/ρg + z : elle plonge au col et remonte ensuite (fluide parfait : retour au niveau initial).</p>
       </div>
     </figure>
   </div>
@@ -1014,7 +1028,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
           <div class="ctl"><label for="re-v">Vitesse débitante V <output id="re-v-out"></output></label><input id="re-v" type="range" min="-3" max="1" step="0.01" value="-0.027"></div>
         </div>
         <div class="readout" id="re-read"></div>
-        <p class="hint">Réglage initial : la conduite du Palais de Compiègne (d = 108 mm, V = 0,94 m/s) → Re ≈ 1,0·10⁵, Λ = 0,0177 comme dans le corrigé. Bande grise : transition, aucune des deux lois n'est fiable.</p>
+        <p class="hint">Réglage initial : la conduite du Palais de Compiègne (d = 108 mm, V = 0,94 m/s) → Re ≈ 1,0·10⁵, Λ = 0,0177 comme dans le corrigé. Bande grise : transition, aucune des deux lois n'est fiable. L'encart montre l'allure de l'écoulement dans la conduite : en laminaire, les lignes de courant restent parallèles et le profil de vitesse est parabolique ; en turbulent, elles s'emmêlent (agitation) et le profil s'aplatit au centre, avec un fort gradient près de la paroi, d'où plus de frottement.</p>
       </div>
     </figure>
     <div class="trap"><span class="tag">Piège</span><p>On ne peut factoriser les k et ΛL/d que s'ils sont rapportés à la <strong>même vitesse</strong>. Dès que le diamètre change, chaque tronçon a son ρV²/2 (corrigé Compiègne, partie 2 : « il n'est pas possible de les sommer »).</p></div>
@@ -1880,6 +1894,35 @@ function segBind(attr, cb) {
   return btns;
 }
 
+/* Lignes de courant : tracé à partir de points, sens marqué par deux chevrons.
+   mode : 'still' (trait plein, des particules montrent déjà le mouvement), 'js' (défilement piloté par la figure), sinon défilement CSS. */
+function sline(g, pts, main, mode) {
+  const p = el('path', { d: path(pts), class: 'sline' + (main ? ' main' : '') + (mode ? ' ' + mode : '') }, g);
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const L = cum[cum.length - 1], s = main ? 5 : 4;
+  if (L > 40) [0.35, 0.75].forEach((f) => {
+    const t = f * L; let i = cum.findIndex((c) => c >= t); if (i < 1) i = 1;
+    const d = cum[i] - cum[i - 1] || 1, ux = (pts[i][0] - pts[i - 1][0]) / d, uy = (pts[i][1] - pts[i - 1][1]) / d;
+    const x = pts[i - 1][0] + ux * (t - cum[i - 1]), y = pts[i - 1][1] + uy * (t - cum[i - 1]);
+    el('path', { d: `M${x - ux * s - uy * s * 0.7},${y - uy * s + ux * s * 0.7} L${x},${y} L${x - ux * s + uy * s * 0.7},${y - uy * s - ux * s * 0.7}`, class: 'sline-chev' + (main ? ' main' : '') }, g);
+  });
+  return p;
+}
+function bez(p0, p1, p2, p3, n = 24) {
+  const out = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; out.push([u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]); }
+  return out;
+}
+// Ligne de courant d'un réservoir : part de la surface libre (xs, ys), descend puis entre horizontalement dans la conduite en (xe, ye)
+function intoPipe(xs, ys, xe, ye) { return bez([xs, ys], [xs, ys + 0.75 * (ye - ys)], [xs + 0.45 * (xe - xs), ye], [xe, ye]); }
+// Points d'un jet Q(a, c, b) décalés de off·(1 − t) vers le bas au départ, off·t vers l'extérieur à l'arrivée
+function jetPts(a, c, b, off, n = 8) {
+  const out = [];
+  for (let i = 1; i <= n; i++) { const t = i / n, u = 1 - t; out.push([u * u * a[0] + 2 * u * t * c[0] + t * t * b[0] - off * t, u * u * a[1] + 2 * u * t * c[1] + t * t * b[1] + off * u]); }
+  return out;
+}
+
 /* Boucle d'animation partagée : chaque figure n'est animée que si elle est visible */
 const anims = [];
 function addAnim(svg, fn) {
@@ -1919,6 +1962,13 @@ requestAnimationFrame(frame);
   el('path', { d: path(bot.concat([nz[2]])), class: 'tank-thin' }, g0);
   // jet
   el('path', { d: `M${xb + 22},${cy} Q${xb + 36},${cy + 2} ${xb + 42},${cy + 44}`, stroke: 'var(--water-deep)', 'stroke-width': 9, fill: 'none', 'stroke-linecap': 'round' }, g0);
+  // lignes de courant : du réservoir au jet, resserrées au col
+  [-0.6, -0.2, 0.2, 0.6].forEach((e) => {
+    const pts = intoPipe(86 - e * 70, surfY + 4, xa, cy + e * R0);
+    for (let x = xa + 5; x <= xb; x += 5) pts.push([x, cy + e * r(x)]);
+    pts.push([xb + 22, cy + e * 7]);
+    sline(g0, pts.concat(jetPts([xb + 22, cy], [xb + 36, cy + 2], [xb + 42, cy + 44], e * 3.5)), false, 'still');
+  });
   // tubes piézométriques
   [250, 380, 510].forEach((x) => {
     const yt = cy - r(x), lv = piezo(x);
@@ -2280,6 +2330,12 @@ requestAnimationFrame(frame);
     for (let i = 0; i <= 60; i++) { const u = i / 60, x = X0 + u * (X1 - X0); top.push([x, CY - hOf(u)]); bot.push([x, CY + hOf(u)]); }
     el('path', { d: path(top.concat(bot.slice().reverse()), true), class: 'water' }, gS);
     el('path', { d: path(top), class: 'tank' }, gS); el('path', { d: path(bot), class: 'tank' }, gS);
+    // lignes de courant : y = CY + e·h(x) ; celle de la particule suivie en magenta
+    [-0.8, -0.45, -0.1, 0.6, hot.e].forEach((e) => {
+      const pts = []; for (let i = 0; i <= 60; i++) { const u = i / 60; pts.push([X0 + u * (X1 - X0), CY + e * hOf(u)]); }
+      sline(gS, pts, e === hot.e, 'still');
+    });
+    txt(gS, X1 - 4, CY + hOf(1) + 16, 'ligne de courant de la particule suivie', 'lbl-pd small end');
     // graphe u(x)
     const yb = 285, yt = 190, umax = U1 * 4.2;
     el('line', { x1: X0, y1: yb, x2: X1, y2: yb, class: 'ax' }, gS);
@@ -2335,7 +2391,7 @@ requestAnimationFrame(frame);
   const dOf = (s) => d1 * (1 - (1 - ratio) * bump((s - 0.3) / 0.13));
   const zOf = (s) => H * (1 - smooth((s - 0.58) / 0.27));
   const gG = el('g', null, svg), gC = el('g', null, svg), gF = el('g', null, svg);
-  let flow = null;
+  let flows = [];
   function terms(s) {
     const q = Q / 1000, V1 = q / (Math.PI * d1 * d1 / 4), V = q / (Math.PI * dOf(s) ** 2 / 4);
     const pt = p1 + rho * G * zOf(0) + 0.5 * rho * V1 * V1;
@@ -2350,7 +2406,10 @@ requestAnimationFrame(frame);
     for (let i = 0; i <= 100; i++) { const s = i / 100, x = X0 + s * (X1 - X0); top.push([x, yc(s) - rp(s)]); bot.push([x, yc(s) + rp(s)]); mid.push([x, yc(s)]); }
     el('path', { d: path(top.concat(bot.slice().reverse()), true), class: 'water' }, gG);
     el('path', { d: path(top), class: 'tank-thin' }, gG); el('path', { d: path(bot), class: 'tank-thin' }, gG);
-    flow = el('path', { d: path(mid), class: 'flow-dash' }, gG);
+    flows = [-0.62, 0.62].map((e) => sline(gG, mid.map(([x, y], i) => [x, y + e * rp(i / 100)]), false, 'js'));
+    flows.push(sline(gG, mid, true, 'js'));
+    txt(gG, X0 + 2, yc(0) - rp(0) - 6, 'A', 'lbl-pd'); txt(gG, X1 - 2, yc(1) - rp(1) - 6, 'B', 'lbl-pd end');
+    txt(gG, X0 + 20, yc(0) - rp(0) - 6, 'ligne de courant suivie, de A à B', 'lbl-pd small');
     el('line', { x1: X0, y1: 40 + 10 * 9.5 + 22, x2: X1, y2: 40 + 10 * 9.5 + 22, class: 'lvl' }, gG);
     txt(gG, X1, 40 + 10 * 9.5 + 36, 'z = 0', 'lbl-m small end');
     const cx = X0 + sc * (X1 - X0);
@@ -2388,7 +2447,7 @@ requestAnimationFrame(frame);
   bindRange('be-q', (v) => fr(v, 1) + ' L/s', (v) => { Q = v; draw(); }).upd();
   bindRange('be-d', (v) => fr(v, 2), (v) => { ratio = v; draw(); }).upd();
   bindRange('be-h', (v) => fr(v, 1) + ' m', (v) => { H = v; draw(); }).upd();
-  addAnim(svg, (dt) => { off -= dt * Q * 2.5; if (flow) flow.setAttribute('stroke-dashoffset', off); });
+  addAnim(svg, (dt) => { off -= dt * Q * 2.5; flows.forEach((f) => f.setAttribute('stroke-dashoffset', off)); });
 })();
 
 /* =========================================================================
@@ -2396,7 +2455,7 @@ requestAnimationFrame(frame);
    ========================================================================= */
 (function gene() {
   const svg = $('pg-svg');
-  let V = 4.5, off = 0, flow = null;
+  let V = 4.5, off = 0, flows = [];
   const YS = 60, YC = 250, K = 190 / 3; // 3 m entre la surface et l'axe
   function draw() {
     clear(svg);
@@ -2408,7 +2467,18 @@ requestAnimationFrame(frame);
     const vo = Math.min(1, V / 7.67);
     el('path', { d: `M620,${YC - 15} L640,${YC - 15 * vo} L640,${YC + 15 * vo} L620,${YC + 15} Z`, class: 'solid' }, svg);
     if (V > 0.05) el('path', { d: `M640,${YC} Q${652 + V * 3},${YC} ${660 + V * 2},${YC + 40}`, stroke: 'var(--water-deep)', 'stroke-width': 3 + 8 * vo, fill: 'none', 'stroke-linecap': 'round' }, svg);
-    flow = el('line', { x1: 192, y1: YC, x2: 618, y2: YC, class: 'flow-dash' }, svg);
+    // lignes de courant : du réservoir à la vanne ; celle de l'axe s'arrête sur le nez du tube 2 (point d'arrêt)
+    flows = [];
+    if (V > 0.05) {
+      [-0.66, -0.33, 0.33, 0.66, 0].forEach((e) => {
+        const pts = intoPipe(110 - e * 100, YS + 4, 190, YC + e * 15);
+        for (let x = 196; x <= (e ? 618 : 462); x += 6) pts.push([x, YC + e * 15 + (e ? Math.sign(e) * (Math.abs(e) < 0.5 ? 4 : 2) * smooth((x - 440) / 26) : 0)]);
+        flows.push(sline(svg, pts, e === 0, 'js'));
+      });
+      el('line', { x1: 320, y1: YC - 15, x2: 320, y2: YC + 15, class: 'sec-n' }, svg);
+      txt(svg, 330, YC + 28, 'B', 'lbl-n small');
+      txt(svg, 196, YC + 48, 'en B, lignes parallèles : p + ρgz y est le même partout', 'lbl-n small');
+    } else txt(svg, 196, YC + 48, 'vanne fermée : fluide au repos, pas de ligne de courant', 'lbl-m small');
     // tube 1 (piézomètre)
     const h = V * V / (2 * G), y1 = YS + h * K;
     el('rect', { x: 314, y: y1, width: 12, height: YC - 15 - y1, class: 'water-deep' }, svg);
@@ -2432,7 +2502,7 @@ requestAnimationFrame(frame);
     setRead('pg-read', [['V', fr(V, 2) + ' m/s'], ['Q (d = 10 cm)', fr(Q * 1000, 1) + ' L/s'], ['V²/2g', fr(h * 100, 1) + ' cm'], ['z_B′', 'z_A − ' + fr(h, 2) + ' m'], ['z_C′', 'z_A']]);
   }
   bindRange('pg-v', (v) => fr(v, 2) + ' m/s', (v) => { V = v; draw(); }).upd();
-  addAnim(svg, (dt) => { off -= dt * V * 18; if (flow) flow.setAttribute('stroke-dashoffset', off); });
+  addAnim(svg, (dt) => { off -= dt * V * 4; flows.forEach((f) => f.setAttribute('stroke-dashoffset', off)); });
 })();
 
 /* =========================================================================
@@ -2459,6 +2529,21 @@ requestAnimationFrame(frame);
       el('path', { d: path(pts), stroke: 'var(--water-deep)', 'stroke-width': 12 * Math.sqrt(Cc), fill: 'none', 'stroke-linecap': 'round', opacity: 0.8 }, g0);
       el('path', { d: `M${XO},${YO - 6} Q${XO + 8},${YO - 6 * Math.sqrt(Cc)} ${XO + 16},${YO - 6 * Math.sqrt(Cc)} M${XO},${YO + 6} Q${XO + 8},${YO + 6 * Math.sqrt(Cc)} ${XO + 16},${YO + 6 * Math.sqrt(Cc)}`, class: 'tank-thin' }, g0);
       txt(g0, XO - 4, YO + 30, 'B : section contractée', 'lbl-m small end');
+      // lignes de courant : elles arrivent de toute la hauteur du réservoir et ne tournent pas à angle droit, d'où la contraction
+      if (h > 0.05) {
+        const w = 6 * Math.sqrt(Cc);
+        [-0.7, -0.25, 0.25, 0.7, 0].forEach((e) => {
+          const pts = intoPipe(120 - e * 90, ys + 3, XO, YO + e * 6);
+          pts.push([XO + 8, YO + e * (6 + w) / 2], [XO + 16, YO + e * w]);
+          for (let i = 1; i <= 30; i++) {
+            const x = (range * i) / 30; if (x * K <= 16) continue;
+            const t = x / V, sl = G * t / V, nn = Math.hypot(1, sl);
+            pts.push([XO + x * K - e * w * sl / nn, YO + 0.5 * G * t * t * K + e * w / nn]);
+          }
+          sline(g0, pts, e === 0);
+        });
+        el('circle', { cx: XO + 16, cy: YO, r: 3.5, class: 'particle hot' }, g0);
+      }
     }
     txt(g0, 120, ys - 8, 'A', 'lbl-m mid');
     const S = Math.PI * d * d / 4, Q = Cc * S * V;
@@ -2498,7 +2583,7 @@ requestAnimationFrame(frame);
    ========================================================================= */
 (function venturi() {
   const svg = $('ve-svg');
-  let Q = 2.5, r = 0.4, off = 0, flow = null;
+  let Q = 2.5, r = 0.4, off = 0, flows = [];
   const CY = 230, R0 = 24, DA = 0.08, YA = 60, K = 500;
   const rad = (x) => R0 * (1 - (1 - Math.sqrt(r)) * (x < 230 ? 0 : x < 300 ? smooth((x - 230) / 70) : x < 380 ? 1 : x < 520 ? 1 - smooth((x - 380) / 140) : 0));
   function draw() {
@@ -2512,13 +2597,14 @@ requestAnimationFrame(frame);
     }
     el('path', { d: path(top.concat(bot.slice().reverse()), true), class: 'water' }, svg);
     el('path', { d: path(top), class: 'tank-thin' }, svg); el('path', { d: path(bot), class: 'tank-thin' }, svg);
-    flow = el('line', { x1: 32, y1: CY, x2: 648, y2: CY, class: 'flow-dash' }, svg);
+    flows = [-0.66, -0.33, 0.33, 0.66, 0].map((e) => { const pts = []; for (let x = 32; x <= 648; x += 4) pts.push([x, CY + e * rad(x)]); return sline(svg, pts, e === 0, 'js'); });
+    txt(svg, 340, CY + R0 + 32, 'au col, les lignes de courant se resserrent : V augmente, p baisse', 'lbl-n small mid');
     const tubes = [[150, YA, 'A'], [340, YA + K * (VB * VB - VA * VA) / (2 * G), 'B']];
     tubes.forEach(([x, lv, n]) => {
       const yt = CY - rad(x);
       el('rect', { x: x - 6, y: lv, width: 12, height: yt - lv, class: 'water-deep' }, svg);
       el('path', { d: `M${x - 6},24 L${x - 6},${yt} M${x + 6},24 L${x + 6},${yt}`, class: 'tank-thin' }, svg);
-      txt(svg, x, CY + 6, n, 'lbl-m mid');
+      txt(svg, x, CY + rad(x) + 16, n, 'lbl-m mid');
     });
     el('path', { d: path(pz), class: 'line-piezo' }, svg);
     const h = (VB * VB - VA * VA) / (2 * G);
@@ -2529,7 +2615,7 @@ requestAnimationFrame(frame);
   }
   bindRange('ve-q', (v) => fr(v, 2) + ' L/s', (v) => { Q = v; draw(); }).upd();
   bindRange('ve-r', (v) => fr(v, 2), (v) => { r = v; draw(); }).upd();
-  addAnim(svg, (dt) => { off -= dt * Q * 14; if (flow) flow.setAttribute('stroke-dashoffset', off); });
+  addAnim(svg, (dt) => { off -= dt * Q * 14; flows.forEach((f) => f.setAttribute('stroke-dashoffset', off)); });
 })();
 
 /* =========================================================================
@@ -2550,6 +2636,12 @@ requestAnimationFrame(frame);
     el('rect', { x: 370, y: yT - 8, width: 50, height: 16, class: 'water' }, svg);
     el('path', { d: `M370,${yT - 8} L420,${yT - 8} M370,${yT + 8} L420,${yT + 8}`, class: 'tank-thin' }, svg);
     el('path', { d: `M420,${yT} Q440,${yT} 446,${yT + 26}`, stroke: 'var(--water-deep)', 'stroke-width': 8, fill: 'none', 'stroke-linecap': 'round' }, svg);
+    // lignes de courant : du lac à la sortie, à travers la turbine
+    [-0.5, 0.5, 0].forEach((e) => {
+      const pts = intoPipe(85 - e * 90, 54, 150, 100 + e * 8);
+      pts.push([330, yT + e * 8], [370, yT + e * 8], [420, yT + e * 8]);
+      sline(svg, pts.concat(jetPts([420, yT], [440, yT], [446, yT + 26], e * 3, 6)), e === 0);
+    });
     el('circle', { cx: 350, cy: yT, r: 22, class: 'solid' }, svg);
     rot = el('g', { transform: `translate(350,${yT}) rotate(${ang})` }, svg);
     for (let i = 0; i < 6; i++) el('line', { x1: 0, y1: 0, x2: 18 * Math.cos(i * Math.PI / 3), y2: 18 * Math.sin(i * Math.PI / 3), stroke: 'var(--ink)', 'stroke-width': 2.4 }, rot);
@@ -2616,6 +2708,22 @@ requestAnimationFrame(frame);
     el('line', { x1: lx(ReC), y1: Y0, x2: lx(ReC), y2: ly(Lc), class: 'lvl' }, gM);
     el('line', { x1: X0, y1: ly(Lc), x2: lx(ReC), y2: ly(Lc), class: 'lvl' }, gM);
     el('circle', { cx: lx(ReC), cy: ly(Lc), r: 6, class: 'probe' }, gM);
+    // encart : allure des lignes de courant et du profil de vitesse dans la conduite
+    const bx = 430, by = 52, bw = 210, bh = 64, lam = Re < 2000, amp = lam ? 0 : Re < 4000 ? 2.2 : 4.5;
+    el('rect', { x: bx - 10, y: by - 24, width: bw + 20, height: bh + 34, rx: 8, class: 'inset' }, gM);
+    txt(gM, bx, by - 9, lam ? 'laminaire : lignes parallèles' : Re < 4000 ? 'transition : les lignes ondulent' : 'turbulent : lignes brouillées', 'small ' + (lam ? 'lbl-n' : 'lbl-e'));
+    el('path', { d: `M${bx},${by} L${bx + bw},${by} M${bx},${by + bh} L${bx + bw},${by + bh}`, class: 'tank-thin' }, gM);
+    for (let k = 1; k <= 5; k++) {
+      const y0 = by + k * bh / 6, pts = [];
+      for (let x = 70; x <= bw; x += 3) pts.push([bx + x, y0 + amp * Math.sin(x / 8 + k * 1.7) * Math.sin(x / 21 + k * 2.3)]);
+      sline(gM, pts, false);
+    }
+    const prof = (y) => { const q = Math.abs(2 * y / bh - 1); return lam ? 1 - q * q : Math.pow(Math.max(1 - q * q, 0), 1 / 7); };
+    const pp = []; for (let i = 0; i <= 32; i++) { const y = i * bh / 32; pp.push([bx + 6 + 48 * prof(y), by + y]); }
+    el('line', { x1: bx + 6, y1: by, x2: bx + 6, y2: by + bh, class: 'ax' }, gM);
+    el('path', { d: path(pp), class: lam ? 'curve-n' : 'curve-e' }, gM);
+    [1, 2, 3, 4, 5].forEach((k) => { const y = k * bh / 6; arrow(gM, bx + 6, by + y, bx + 6 + 48 * prof(y), by + y, 'arr-m', 5); });
+    txt(gM, bx + 30, by + bh + 14, lam ? 'profil parabolique' : 'profil aplati', 'lbl-m small mid');
     const rho = rhoOf[String(nu)] || 1000, j = L / D * 0.5 * rho * V * V;
     setRead('re-read', [['V', fr(V, 3) + ' m/s'], ['Re = Vd/ν', Re >= 1e4 ? sci(Re, 2) : fr(Re, 0)], ['régime', reg], ['Λ', fr(L, 4)], ['Δp par mètre', fr(j, 1) + ' Pa/m']]);
   }
@@ -2657,6 +2765,12 @@ requestAnimationFrame(frame);
     el('rect', { x: XR, y: YP - w1, width: XC - XR, height: 2 * w1, class: 'water' }, svg);
     el('rect', { x: XC, y: YP - w2, width: XE - XC, height: 2 * w2, class: 'water' }, svg);
     el('path', { d: `M${XR},${YP - w1} L${XC},${YP - w1} L${XC},${YP - w2} L${XE},${YP - w2} M${XR},${YP + w1} L${XC},${YP + w1} L${XC},${YP + w2} L${XE},${YP + w2}`, class: 'tank-thin' }, svg);
+    // lignes de courant : du réservoir au jet, resserrées dans le tronçon 2
+    [-0.5, 0.5, 0].forEach((e) => {
+      const pts = intoPipe(70 - e * 80, Y(H0) + 4, XR, YP + e * w1);
+      for (let x = XR + 6; x <= XE; x += 6) pts.push([x, YP + e * (w1 + (w2 - w1) * smooth((x - XC + 18) / 18))]);
+      sline(svg, pts.concat(jetPts([XE, YP], [XE + 22, YP], [XE + 34, YP + 26], e * w2, 6)), e === 0);
+    });
     el('path', { d: `M${XV - 7},${YP - w2 - 6} L${XV + 7},${YP + w2 + 6} L${XV + 7},${YP - w2 - 6} L${XV - 7},${YP + w2 + 6} Z`, class: 'solid' }, svg);
     el('path', { d: `M${XE},${YP} Q${XE + 22},${YP} ${XE + 34},${YP + 26}`, stroke: 'var(--water-deep)', 'stroke-width': 2 * w2, fill: 'none', 'stroke-linecap': 'round' }, svg);
     el('line', { x1: 20, y1: YP, x2: 660, y2: YP, class: 'lvl' }, svg);
