@@ -535,6 +535,28 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
 .card .acts kbd { margin-left: 6px; opacity: .8; }
 @media (max-width: 520px) { .card .acts kbd { display: none; } }
 .cards .more { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); align-items: baseline; }
+/* Schémas animés des cartes */
+.cfig { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; min-width: 0; }
+.cfig svg { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; overflow: visible; }
+.cfig svg text { font-size: 11px; }
+.cfig svg text.small { font-size: 10.5px; }
+.cfig svg text.big { font-size: 15px; }
+.cfig figcaption { font-size: 13.5px; color: var(--muted); line-height: 1.5; max-width: 70ch; }
+.cfig .cf-flow { animation: cf-dash .9s linear infinite; }
+@keyframes cf-dash { to { stroke-dashoffset: -12; } }
+.cfig.leitner { background: var(--sheet); max-width: 560px; }
+.cfig.leitner svg { max-width: 480px; }
+.card .face.a > .cfig { margin-bottom: 2px; }
+.card .exfig { display: grid; gap: 8px; text-align: left; }
+.card .exfig .ex-fig { border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); overflow: hidden; }
+.card .exfig .ex-fig svg { display: block; width: 100%; height: auto; max-height: 230px; }
+.card .exfig .data { font-size: 12px; }
+.card .exfig details { font-size: 14px; color: var(--muted); }
+.card .exfig details summary { cursor: pointer; font-size: 13px; }
+.card .exfig details > div { display: grid; gap: 6px; margin-top: 6px; }
+.cfig .cf-static { display: none; }
+@media (max-width: 520px) { .cfig { padding: 6px 4px; } .card .face { padding-inline: 14px; } }
+@media (prefers-reduced-motion: reduce) { .cfig .cf-flow { animation: none; } .cfig .cf-mov { display: none; } .cfig .cf-static { display: inline; } }
 
 /* Impression : le formulaire tient sur une feuille, les corrections sont dépliées */
 @page { margin: 13mm; }
@@ -3248,6 +3270,769 @@ if (Q.length) {
   }
 }
 
+/* ---------- Schémas animés des cartes mémoire ----------
+   Un petit schéma SVG par carte (formules, pièges, méthode), affiché au dos de la carte.
+   Animations SMIL et CSS ; avec « réduire les animations », on garde l'état final, figé. */
+const CARD_FIG = (function () {
+  const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const n1 = (v) => (Math.round(v * 10) / 10).toString();
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tx = (s) => esc(s).replace(/_\{([^}]*)\}/g, '<tspan dy="3" font-size="0.78em">$1</tspan><tspan dy="-3">​</tspan>');
+  const T = (x, y, s, c) => '<text x="' + x + '" y="' + y + '"' + (c ? ' class="' + c + '"' : '') + '>' + tx(s) + '</text>';
+  const R = ' repeatCount="indefinite"';
+  const an = (attr, values, dur, kt, extra) => '<animate attributeName="' + attr + '" values="' + values + '" dur="' + dur + 's"' + (kt ? ' keyTimes="' + kt + '"' : '') + R + (extra || '') + '/>';
+  // Visible entre les fractions a et b du cycle
+  const show = (a, b, dur) => an('opacity', '0;0;1;1;0;0', dur, '0;' + a + ';' + Math.min(a + .05, b) + ';' + b + ';' + Math.min(b + .04, 1) + ';1');
+  const g = (inner, extra) => '<g' + (extra ? ' ' + extra : '') + '>' + inner + '</g>';
+  const shown = (a, b, dur, inner) => '<g>' + show(a, b, dur) + inner + '</g>';
+  // État transitoire : invisible quand l'animation est coupée (on garde l'état final)
+  const before = (a, b, dur, inner) => '<g opacity="0">' + show(a, b, dur) + inner + '</g>';
+  const fadeOut = (a, b, dur, inner) => '<g opacity="0">' + an('opacity', '1;1;0;0;1', dur, '0;' + a + ';' + b + ';0.95;1') + inner + '</g>';
+  const A = (x1, y1, x2, y2, c, hd) => {
+    c = c || 'arr-m'; hd = hd || 7;
+    const L = Math.hypot(x2 - x1, y2 - y1); if (L < 1) return '';
+    const ux = (x2 - x1) / L, uy = (y2 - y1) / L, h = Math.min(hd, L * .7), bx = x2 - ux * h, by = y2 - uy * h;
+    return '<line x1="' + n1(x1) + '" y1="' + n1(y1) + '" x2="' + n1(bx) + '" y2="' + n1(by) + '" class="' + c + '"/><polygon points="' + n1(x2) + ',' + n1(y2) + ' ' + n1(bx - uy * h * .5) + ',' + n1(by + ux * h * .5) + ' ' + n1(bx + uy * h * .5) + ',' + n1(by - ux * h * .5) + '" class="' + c + ' head"/>';
+  };
+  const P = (d, c, extra) => '<path d="' + d + '" class="' + c + '"' + (extra || '') + '/>';
+  const fl = (d, dur) => '<path d="' + d + '" class="flow-dash cf-flow"' + (dur ? ' style="animation-duration:' + dur + 's"' : '') + '/>';
+  const mov = (d, dur, o) => {
+    o = o || {};
+    return '<circle r="' + (o.r || 3.5) + '" class="' + (o.c || 'particle') + ' cf-mov"><animateMotion dur="' + dur + 's"' + R + ' path="' + d + '"' +
+      (o.kp ? ' keyPoints="' + o.kp + '" keyTimes="' + o.kt + '" calcMode="' + (o.ks ? 'spline" keySplines="' + o.ks : 'linear') + '"' : '') + (o.begin ? ' begin="' + o.begin + 's"' : '') + '/></circle>';
+  };
+  const stream = (d, dur, n, o) => { let s = ''; for (let k = 0; k < n; k++) s += mov(d, dur, Object.assign({}, o, { begin: -k * dur / n })); return s; };
+  // Trait qui se dessine entre a et b (fractions du cycle)
+  const draw = (d, c, a, b, dur) => '<path d="' + d + '" class="' + c + '" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0">' + an('stroke-dashoffset', '100;100;0;0', dur, '0;' + a + ';' + b + ';1') + '</path>';
+  const surf = (x1, x2, y) => { const xm = x1 + (x2 - x1) * .78; return '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" class="surf"/><path d="M' + (xm - 5) + ',' + (y - 8) + ' L' + (xm + 5) + ',' + (y - 8) + ' L' + xm + ',' + (y - 1) + ' Z" class="surf-tri"/>'; };
+  const dimV = (x, y1, y2, lab, c) => '<line x1="' + x + '" y1="' + y1 + '" x2="' + x + '" y2="' + y2 + '" class="arr-m"/><line x1="' + (x - 4) + '" y1="' + y1 + '" x2="' + (x + 4) + '" y2="' + y1 + '" class="arr-m"/><line x1="' + (x - 4) + '" y1="' + y2 + '" x2="' + (x + 4) + '" y2="' + y2 + '" class="arr-m"/>' + (lab ? T(x + 6, (y1 + y2) / 2 + 4, lab, c || 'lbl-m') : '');
+  const dot = (x, y, c, r) => '<circle cx="' + x + '" cy="' + y + '" r="' + (r || 4) + '" class="' + (c || 'node') + '"/>';
+  const pulse = (x, y, dur, a, b) => '<circle cx="' + x + '" cy="' + y + '" r="6" class="node-ring">' + an('r', '5;11;5', 1.6) + (a != null ? show(a, b, dur) : '') + '</circle>';
+  const rect = (x, y, w, h, c, extra) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" class="' + c + '"' + (extra ? ' ' + extra : '') + '/>';
+  // Rectangle qui pousse vers le haut depuis y0 (base) : hauteur 0 → h entre a et b
+  const growUp = (x, y0, w, h, c, a, b, dur) => '<rect x="' + x + '" y="' + (y0 - h) + '" width="' + w + '" height="' + h + '" class="' + c + '">' + an('height', '0;0;' + h + ';' + h, dur, '0;' + a + ';' + b + ';1') + an('y', y0 + ';' + y0 + ';' + (y0 - h) + ';' + (y0 - h), dur, '0;' + a + ';' + b + ';1') + '</rect>';
+  const pump = (x, y) => '<circle cx="' + x + '" cy="' + y + '" r="13" class="probe"/><path d="M' + (x - 5) + ',' + (y - 7) + ' L' + (x + 7) + ',' + y + ' L' + (x - 5) + ',' + (y + 7) + ' Z" class="c-pg"/>';
+  const bubbles = (x, y, w, dur, n) => { let s = ''; for (let k = 0; k < n; k++) { const bx = x + ((k * 37) % w), by = y + ((k * 13) % 10); s += '<circle cx="' + bx + '" cy="' + by + '" r="2.6" class="airf" style="stroke:var(--node);stroke-width:1">' + an('r', '0;3;0', dur, null, ' begin="' + (-k * dur / n).toFixed(2) + 's"') + '</circle>'; } return s; };
+
+  const svg = (w, h, label, body) => '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + label + '">' + body + '</svg>';
+
+  /* ----- Blocs réutilisés ----- */
+  function budget(cap) { // Bernoulli : la particule suit la ligne de courant, la barre empile p, ρgz, ½ρV²
+    const D = 6, kt = '0;0.45;0.7;1';
+    const top = 'M15,100 L110,100 C140,100 140,48 170,48 L280,48', bot = 'M15,150 L110,150 C140,150 140,72 170,72 L280,72';
+    const axis = 'M15,125 L110,125 C140,125 140,60 170,60 L280,60';
+    const zA = 22, zB = 58, dA = 10, dB = 42, base = 156, tot = 118;
+    const pA = tot - zA - dA, pB = tot - zB - dB;
+    const seg = (cls, yA, hA, yB, hB) => '<rect x="300" y="' + yB + '" width="22" height="' + hB + '" class="' + cls + '">' + an('y', yA + ';' + yA + ';' + yB + ';' + yB, D, kt) + an('height', hA + ';' + hA + ';' + hB + ';' + hB, D, kt) + '</rect>';
+    return {
+      svg: svg(360, 170, 'Ligne de courant dans un rétrécissement qui monte, avec le budget de pression de la particule', [
+        '<path d="M15,100 L110,100 C140,100 140,48 170,48 L280,48 L280,72 L170,72 C140,72 140,150 110,150 L15,150 Z" class="water"/>',
+        P(top, 'tank-thin'), P(bot, 'tank-thin'), fl(axis),
+        mov(axis, D, { r: 4.5, c: 'particle hot', kp: '0;0.33;0.62;1', kt: kt }),
+        T(24, 118, 'A', 'lbl-n'), T(262, 42, 'B', 'lbl-n'),
+        T(20, 166, 'large, bas : V faible', 'lbl-m small'), T(150, 92, 'étroit, haut : V grand', 'lbl-m small'),
+        seg('c-pg', base - zA, zA, base - zB, zB), seg('c-pd', base - zA - dA, dA, base - zB - dB, dB), seg('c-ps', base - tot, pA, base - tot, pB),
+        '<line x1="294" y1="' + (base - tot) + '" x2="328" y2="' + (base - tot) + '" class="line-tot"/>',
+        T(311, 30, 'p_{t}', 'mid'), T(332, 52, 'p', 'lbl-ps'), T(332, 100, '½ρV²', 'lbl-pd small'), T(332, 150, 'ρgz', 'lbl-pg small')
+      ].join('')),
+      cap: cap || 'La particule accélère dans le rétrécissement et monte : ½ρV² et ρgz grandissent, p paie la différence. La somme (trait noir) ne bouge pas, si l\'écoulement est parfait, incompressible, stationnaire et qu\'on reste sur la même ligne de courant.'
+    };
+  }
+  function siphon(cap) { // aussi utilisé sans légende
+    const D = 8;
+    const sl = 'M60,62 C55,140 110,160 110,135 L110,30 Q110,18 122,18 L190,18 Q202,18 202,30 L202,166';
+    const tube = 'M110,140 L110,30 Q110,18 122,18 L190,18 Q202,18 202,30 L202,160';
+    return {
+      svg: svg(360, 180, 'Siphon : ligne de courant de la surface libre jusqu\'au jet de sortie', [
+        rect(20, 62, 120, 90, 'water'), P('M20,40 L20,152 L140,152 L140,40', 'tank'), surf(20, 140, 62),
+        P(tube, 'tank', ' style="stroke-width:12"'), P(tube, 'tank', ' style="stroke-width:7;stroke:var(--water-deep)"'),
+        draw(sl, 'line-ps', .02, .35, D), mov(sl, D / 2, { r: 4, c: 'particle hot', begin: 0 }),
+        shown(.35, .97, D, dot(60, 62) + T(44, 56, 'A', 'lbl-n') + T(216, 70, 'A : surface libre,', 'lbl-n small') + T(216, 83, 'p_{atm}, V ≈ 0', 'lbl-m small')),
+        shown(.45, .97, D, dot(156, 18) + T(150, 42, 'B', 'lbl-n') + T(216, 106, 'B : point haut,', 'lbl-n small') + T(216, 119, 'p mini (cavitation ?)', 'lbl-m small')),
+        shown(.55, .97, D, dot(202, 166) + T(212, 172, 'C', 'lbl-n') + T(216, 142, 'C : jet, p = p_{atm}', 'lbl-n small'))
+      ].join('')),
+      cap: cap
+    };
+  }
+  function stepper(i) { // frise des six étapes, l'étape i en surbrillance
+    const L = ['Schéma', 'Hypothèses', 'Ligne', 'Compléter', 'Littéral → A.N.', 'Commenter'], D = 5;
+    let s = '<line x1="30" y1="34" x2="330" y2="34" class="gridl" style="stroke-width:3"/>';
+    if (i) s += draw('M30,34 L' + (30 + 60 * i) + ',34', 'line-tot', .05, .45, D);
+    for (let k = 0; k < 6; k++) {
+      const x = 30 + 60 * k, cur = k === i, done = k < i;
+      s += '<circle cx="' + x + '" cy="34" r="' + (cur ? 10 : 7) + '" class="' + (cur ? 'node' : done ? 'dot-f' : 'probe') + '"/>';
+      s += T(x, 37.5, String(k + 1), 'mid small' + (cur || done ? '" style="fill:var(--sheet)' : ''));
+      s += T(x, k % 2 ? 62 : 16, L[k], 'mid small ' + (cur ? 'lbl-n' : 'lbl-m'));
+    }
+    return svg(360, 68, 'Étape ' + (i + 1) + ' sur 6 de la rédaction d\'un médian', s);
+  }
+  function exam(i) {
+    const D = 7; let main, cap;
+    if (i === 0) { const o = F['m:choisir-a-et-b'](); main = o.svg; cap = 'Un schéma propre : repère z, surfaces libres, points A, B… et, à côté de chacun, ce qu\'on sait (p, z, V). La moitié de la réponse est souvent là.'; }
+    else if (i === 1) {
+      const H = [['fluide parfait', 'pas de frottement : Bernoulli s\'applique'], ['incompressible', 'liquide, ou gaz avec Ma < 0,3'], ['stationnaire', 'grand réservoir, ou repère de l\'objet']];
+      let s = '';
+      H.forEach(([a, b], k) => { const y = 34 + k * 42; s += shown(.05 + k * .2, .96, D, '<circle cx="34" cy="' + (y - 4) + '" r="11" class="dot-f"/>' + T(34, y, '✓', 'mid" style="fill:var(--sheet)') + T(56, y - 4, a, '') + T(56, y + 10, b, 'lbl-m small')); });
+      main = svg(360, 150, 'Les trois hypothèses à écrire : parfait, incompressible, stationnaire', s);
+      cap = 'Écris les hypothèses noir sur blanc, avec leur justification : elles disent pourquoi Bernoulli s\'applique, et elles rapportent des points.';
+    } else if (i === 2) { main = siphon().svg; cap = 'Trace la ligne de courant de A à C, puis écris Bernoulli dessus. Là où le fluide est au repos (tubes, réservoir loin de la sortie), c\'est l\'hydrostatique.'; }
+    else if (i === 3) {
+      main = svg(360, 150, 'Trois relations pour compléter Bernoulli : débit, génératrice, interface', [
+        // débit
+        '<path d="M10,60 L50,60 C62,60 64,72 76,72 L110,72 L110,88 L76,88 C64,88 62,100 50,100 L10,100 Z" class="water"/>', P('M10,60 L50,60 C62,60 64,72 76,72 L110,72 M10,100 L50,100 C62,100 64,88 76,88 L110,88', 'tank-thin'),
+        fl('M12,80 L48,80', 2), fl('M78,80 L108,80', .7), T(60, 30, 'débit', 'mid lbl-n'), T(60, 130, 'V₁S₁ = V₂S₂', 'mid small'),
+        // génératrice
+        rect(130, 90, 100, 22, 'water'), P('M130,90 L174,90 M186,90 L230,90 M130,112 L230,112', 'tank-thin'), rect(175, 52, 10, 38, 'water'), P('M174,40 L174,90 M186,40 L186,90', 'tank-thin'), fl('M132,101 L228,101', .8),
+        T(180, 30, 'génératrice', 'mid lbl-n'), T(180, 130, 'p + ρgz = cste', 'mid small'),
+        // interface
+        '<path d="M262,50 L262,104 Q262,116 274,116 L316,116 Q328,116 328,104 L328,70 L316,70 L316,104 L274,104 L274,50 Z" class="merc"/>', rect(316, 44, 12, 26, 'water'), rect(262, 40, 12, 10, 'water'),
+        P('M262,40 L262,104 Q262,116 274,116 L316,116 Q328,116 328,104 L328,40 M274,40 L274,104 L316,104 L316,40', 'tank-thin'),
+        '<line x1="250" y1="70" x2="340" y2="70" class="isobar"/>', T(295, 30, 'interface', 'mid lbl-n'), T(295, 130, 'même niveau :', 'mid small'), T(295, 142, 'même p', 'mid small')
+      ].join(''));
+      cap = 'Une équation de Bernoulli ne suffit pas toujours : le débit relie les vitesses, la génératrice fixe la pression d\'un jet ou d\'un tube, l\'égalité des pressions à une interface sert pour un manomètre.';
+    } else if (i === 4) {
+      main = svg(360, 140, 'Expression littérale encadrée, puis application numérique avec unité', [
+        shown(.03, .96, D, '<rect x="70" y="16" width="220" height="34" rx="4" class="probe" style="stroke-width:2"/>' + T(180, 38, 'V_{B} = √(2g(z_{A} − z_{B}))', 'mid')),
+        shown(.3, .96, D, A(180, 54, 180, 74, 'arr-m', 6) + T(180, 92, '= √(2 × 9,81 × 2,0)', 'mid small')),
+        shown(.55, .96, D, T(180, 120, '= 6,26 m/s', 'mid lbl-n big') + '<line x1="196" y1="126" x2="232" y2="126" class="arr-n"/>' + T(240, 124, 'unité !', 'lbl-n small'))
+      ].join(''));
+      cap = 'D\'abord l\'expression littérale, encadrée : elle se vérifie (dimension, cas limites) et rapporte même si l\'A.N. est fausse. Ensuite seulement la valeur, avec son unité.';
+    } else { const o = F['m:verifier'](); main = o.svg; cap = 'Commente le résultat : ordre de grandeur plausible ? hypothèses vérifiées (cavitation, Mach, Re) ? sens physique ? Une phrase suffit souvent.'; }
+    return { svg: stepper(i) + main, cap };
+  }
+
+  /* ----- Les schémas, par identifiant de carte ----- */
+  const F = {};
+
+  F['f:hydrostatique'] = () => {
+    const D = 5, kt = '0;0.5;1';
+    return {
+      svg: svg(360, 165, 'Sonde qui descend dans un réservoir et profil de pression linéaire', [
+        rect(30, 40, 160, 110, 'water'), P('M30,18 L30,150 L190,150 L190,18', 'tank'), surf(30, 190, 40),
+        '<line x1="30" y1="78" x2="190" y2="78" class="isobar"/><line x1="30" y1="114" x2="190" y2="114" class="isobar"/>',
+        T(120, 74, 'isobares', 'lbl-n small'),
+        A(14, 150, 14, 22, 'arr-m'), T(4, 18, 'z', ''), T(2, 44, '0', 'lbl-m small'),
+        '<line x1="96" y1="40" x2="96" y2="44" class="arr-n" style="stroke-width:1.6">' + an('y2', '44;146;44', D, kt) + '</line>',
+        '<text x="84" y="96" class="lbl-n small">h' + an('y', '46;96;46', D, kt) + '</text>',
+        '<circle cx="110" cy="44" r="6" class="ball">' + an('cy', '44;146;44', D, kt) + '</circle>',
+        // profil p(z)
+        A(220, 156, 352, 156, 'arr-m'), T(342, 150, 'p', ''), '<line x1="220" y1="40" x2="220" y2="156" class="gridl"/>',
+        '<line x1="232" y1="40" x2="340" y2="150" class="line-ps"/>', T(226, 34, 'p_{atm}', 'lbl-ps small'),
+        '<line x1="116" y1="44" x2="232" y2="44" class="lvl">' + an('y1', '44;146;44', D, kt) + an('y2', '44;146;44', D, kt) + an('x2', '232;332;232', D, kt) + '</line>',
+        '<circle cx="232" cy="44" r="4.5" class="particle hot">' + an('cy', '44;146;44', D, kt) + an('cx', '236;336;236', D, kt) + '</circle>',
+        T(272, 74, 'p = p_{atm} + ρgh', 'lbl-ps small'), T(38, 140, 'p + ρgz = cste', 'small')
+      ].join('')),
+      cap: 'La sonde descend : la pression croît linéairement avec la profondeur h (droite bleue), et ne dépend que d\'elle. Sur une même horizontale d\'un fluide unique, p est la même partout.'
+    };
+  };
+
+  F['f:parois'] = () => {
+    const D = 7; let arrows = '';
+    for (let k = 0; k < 6; k++) { const y = 46 + k * 20, L = (y - 30) * .72; arrows += shown(.04 + k * .05, .96, D, A(170 - L, y, 168, y, 'parr', 6)); }
+    return {
+      svg: svg(360, 170, 'Barrage vertical : diagramme triangulaire de pression et centre de poussée sous G', [
+        rect(20, 30, 150, 120, 'water'), surf(20, 170, 30), rect(170, 22, 14, 136, 'wall'), rect(14, 150, 175, 8, 'wall'),
+        '<polygon points="170,30 170,150 83.6,150" class="pdiag">' + show(.36, .96, D) + '</polygon>', arrows,
+        dimV(30, 30, 150, 'H'),
+        dot(177, 90, 'node'), T(190, 94, 'G (mi-hauteur)', 'lbl-n small'),
+        shown(.5, .96, D, dot(177, 110, 'particle hot') + T(190, 114, 'P, à 2H/3 : sous G', 'lbl-pd small')),
+        '<g>' + show(.42, .96, D) + '<animateTransform attributeName="transform" type="translate" values="0 -20;0 -20;0 0;0 0" keyTimes="0;0.5;0.62;1" dur="' + D + 's"' + R + '/>' + A(110, 110, 167, 110, 'arr', 10) + T(112, 104, 'F', 'lbl-l') + '</g>',
+        T(196, 40, 'F = p(z_{G})·S', ''), T(196, 60, 's_{P} = s_{G} + I_{G}/(S s_{G})', 'small'), T(196, 140, 'rect. : I_{G} = bh³/12', 'lbl-m small')
+      ].join('')),
+      cap: 'La pression croît avec la profondeur : le diagramme est un triangle. La résultante vaut p(z_G)·S, mais elle s\'applique plus bas que G, au centre de poussée P (2H/3 pour un barrage rectangulaire).'.replace(/_G/g, ' G')
+    };
+  };
+
+  F['f:archimede-et-autres'] = () => {
+    const D = 3;
+    const bob = '<animateTransform attributeName="transform" type="translate" values="0 0;0 3;0 0" dur="' + D + 's"' + R + '/>';
+    return {
+      svg: svg(360, 170, 'Bloc qui flotte : poussée d\'Archimède égale au poids du volume immergé ; tube capillaire', [
+        rect(20, 70, 180, 85, 'water'), P('M20,40 L20,155 L200,155 L200,40', 'tank'), surf(20, 200, 70),
+        '<g>' + bob + rect(80, 44, 60, 52, 'solid') + rect(80, 70, 60, 26, 'vol') + A(110, 96, 110, 140, 'arr', 8) + A(110, 70, 110, 22, 'arr-f', 8) + '</g>',
+        T(116, 30, 'F_{A} = ρg V_{im}', 'lbl-f small'), T(116, 138, 'Mg', 'lbl-l small'), T(28, 92, 'V_{im}', 'lbl-f small'),
+        // capillarité
+        rect(240, 120, 100, 35, 'water'), P('M240,105 L240,155 L340,155 L340,105', 'tank-thin'),
+        '<rect x="285" y="78" width="10" height="72" class="water">' + an('y', '120;78;78', 4, '0;0.4;1') + an('height', '30;72;72', 4, '0;0.4;1') + '</rect>',
+        P('M284,40 L284,150 M296,40 L296,150', 'tank-thin'),
+        dimV(312, 78, 120, 'h'), T(232, 30, 'h = 2σcosθ/(ρgr)', 'small')
+      ].join('')),
+      cap: 'Archimède : la poussée vaut le poids du liquide déplacé (volume vert, sous la surface), elle équilibre Mg quand le bloc flotte. À droite, la capillarité fait monter l\'eau d\'autant plus que le tube est fin (loi de Jurin).'
+    };
+  };
+
+  F['f:bernoulli'] = () => budget();
+  F['pr:totale-charge'] = () => budget('La charge p + ρgz + ½ρV² se conserve le long d\'une ligne de courant : les trois termes s\'échangent (couleurs), le total (trait noir) reste fixe. Une pompe l\'augmente, les pertes la diminuent.');
+
+  F['f:resultats-classiques'] = () => {
+    const jet = 'M80,112 Q104,112 112,165';
+    return {
+      svg: svg(360, 175, 'Torricelli, Venturi et Pitot', [
+        // Torricelli
+        rect(12, 34, 68, 86, 'water'), P('M12,20 L12,120 L80,120 L80,117 M80,107 L80,20', 'tank'), surf(12, 80, 34),
+        P(jet, 'tank', ' style="stroke:var(--water-deep);stroke-width:5"'), stream(jet, 1.2, 3, { r: 2.5 }),
+        dimV(24, 34, 112, 'h'), T(60, 14, 'V = √(2gh)', 'mid small'), T(60, 172, 'Torricelli', 'mid lbl-m small'),
+        // Venturi
+        '<path d="M126,105 L150,105 C162,105 164,113 176,113 L190,113 C202,113 204,105 216,105 L236,105 L236,135 L216,135 C204,135 202,127 190,127 L176,127 C164,127 162,135 150,135 L126,135 Z" class="water"/>',
+        P('M126,105 L150,105 C162,105 164,113 176,113 L190,113 C202,113 204,105 216,105 L236,105 M126,135 L150,135 C162,135 164,127 176,127 L190,127 C202,127 204,135 216,135 L236,135', 'tank-thin'),
+        fl('M128,120 L234,120', .7), rect(137, 48, 8, 57, 'water'), rect(179, 74, 8, 39, 'water'),
+        P('M136,30 L136,105 M146,30 L146,105 M178,30 L178,113 M188,30 L188,113', 'tank-thin'),
+        '<line x1="146" y1="48" x2="200" y2="48" class="lvl"/>', dimV(198, 48, 74, 'Δh'),
+        T(180, 14, 'Δh → débit Q_{v}', 'mid small'), T(180, 172, 'Venturi', 'mid lbl-m small'),
+        // Pitot
+        rect(246, 105, 110, 30, 'water'), P('M246,105 L356,105 M246,135 L356,135', 'tank-thin'), fl('M248,124 L354,124', .7),
+        rect(263, 60, 8, 45, 'water'), P('M262,34 L262,105 M272,34 L272,105', 'tank-thin'),
+        '<path d="M300,120 L326,120 L326,40" class="tank" style="stroke:var(--water-deep);stroke-width:6"/><rect x="323" y="44" width="6" height="74" class="water"/>', P('M299,116 L322,116 L322,34 M299,124 L330,124 L330,34', 'tank-thin'),
+        '<line x1="272" y1="60" x2="344" y2="60" class="lvl"/><line x1="322" y1="44" x2="344" y2="44" class="lvl"/>', dimV(342, 44, 60, ''), T(300, 54, 'V²/2g', 'lbl-pd small'),
+        T(300, 14, 'p_{arrêt} = p + ½ρV²', 'mid small'), T(300, 172, 'Pitot', 'mid lbl-m small')
+      ].join('')),
+      cap: 'Torricelli : le jet sort à √(2gh). Venturi : le col accélère l\'eau, sa pression baisse, la différence Δh des tubes donne le débit. Pitot : le tube face au courant ramène la particule à l\'arrêt et monte plus haut de V²/2g.'
+    };
+  };
+
+  F['f:energie-et-pertes'] = () => {
+    const D = 7, head = 'M60,40 L138,50 L162,18 L246,32 L246,48 L310,58';
+    return {
+      svg: svg(360, 170, 'Ligne de charge le long d\'une conduite avec pompe et vanne', [
+        rect(10, 40, 50, 110, 'water'), P('M10,22 L10,150 L60,150 L60,132', 'tank'), surf(10, 60, 40),
+        rect(310, 58, 42, 92, 'water'), P('M310,132 L310,150 L352,150 L352,40', 'tank'), surf(310, 352, 58),
+        rect(60, 132, 250, 14, 'water'), P('M60,132 L137,132 M163,132 L310,132 M60,146 L137,146 M163,146 L310,146', 'tank-thin'), fl('M62,139 L308,139', .8),
+        pump(150, 139), '<path d="M240,131 L252,147 L252,131 L240,147 Z" class="solid"/>',
+        draw(head, 'line-tot', .05, .7, D),
+        shown(.3, .97, D, T(120, 14, '+Δp pompe', 'lbl-pg small')),
+        shown(.12, .97, D, T(70, 66, 'pertes régulières', 'lbl-loss small') + T(70, 78, 'Λ (L/d) ρV²/2', 'lbl-loss small')),
+        shown(.55, .97, D, T(206, 72, 'singulière : k ρV²/2', 'lbl-loss small')),
+        T(150, 110, '𝒫 = Q_{v}Δp = ρgH_{p}Q_{v}', 'small'), T(150, 124, 'pompe', 'lbl-m small" text-anchor="middle')
+      ].join('')),
+      cap: 'La charge (trait noir) part de la surface du réservoir A : elle baisse doucement le long du tuyau (frottement), saute à la pompe, chute d\'un coup à la vanne, et arrive au niveau de la surface de B.'
+    };
+  };
+
+  /* Pressions */
+  F['pr:statique'] = () => ({
+    svg: svg(360, 160, 'Conduite avec prise de pression pariétale et capteur qui suit le fluide', [
+      rect(20, 90, 320, 44, 'water'), P('M20,90 L112,90 M128,90 L340,90 M20,134 L340,134', 'tank'),
+      rect(113, 42, 14, 48, 'water'), P('M112,20 L112,90 M128,20 L128,90', 'tank-thin'), surf(108, 132, 42),
+      dimV(140, 42, 112, 'p/ρg', 'lbl-ps small'), fl('M22,112 L338,112', 1),
+      '<g class="cf-mov"><circle r="9" class="node-ring"/><circle r="4" class="particle hot"/><animateMotion dur="5" ' + R + ' path="M30,112 L330,112"/></g>',
+      A(200, 104, 200, 92, 'parr', 6), A(240, 120, 240, 132, 'parr', 6), A(280, 104, 280, 92, 'parr', 6), A(300, 120, 300, 132, 'parr', 6),
+      T(176, 80, 'p : normale à la paroi', 'lbl-ps small'), T(30, 152, 'capteur qui suit le fluide → mesure p', 'lbl-m small')
+    ].join('')),
+    cap: 'La pression statique est celle que mesurerait un capteur emporté par le fluide, ou une prise percée dans la paroi. Elle pousse toujours perpendiculairement aux parois.'
+  });
+
+  F['pr:generatrice'] = () => {
+    const D = 4, kt = '0;0.5;1';
+    const seg = (cls, y1, h1, y2, h2) => '<rect x="290" width="24" class="' + cls + '" y="' + y1 + '" height="' + h1 + '">' + an('y', y1 + ';' + y2 + ';' + y1, D, kt) + an('height', h1 + ';' + h2 + ';' + h1, D, kt) + '</rect>';
+    return {
+      svg: svg(360, 160, 'Section à lignes de courant parallèles : p + ρgz constant sur la section', [
+        rect(20, 30, 220, 110, 'water'), P('M20,30 L240,30 M20,140 L240,140', 'tank'),
+        fl('M22,50 L238,50'), fl('M22,85 L238,85'), fl('M22,120 L238,120'),
+        '<line x1="160" y1="30" x2="160" y2="140" class="sec-n"/>',
+        '<circle cx="160" cy="36" r="5" class="ball">' + an('cy', '36;134;36', D, kt) + '</circle>',
+        '<line x1="166" y1="36" x2="284" y2="36" class="lvl">' + an('y1', '36;134;36', D, kt) + an('y2', '36;134;36', D, kt) + '</line>',
+        A(256, 150, 256, 110, 'arr-m', 6), T(250, 106, 'z', 'small'),
+        seg('c-pg', 50, 100, 140, 10), seg('c-ps', 30, 20, 30, 110),
+        '<line x1="284" y1="30" x2="320" y2="30" class="line-tot"/>',
+        T(320, 46, 'p', 'lbl-ps'), T(320, 146, 'ρgz', 'lbl-pg small'), T(24, 156, 'lignes de courant parallèles', 'lbl-m small')
+      ].join('')),
+      cap: 'Sur une section où les lignes de courant sont parallèles (et au repos), p + ρgz ne change pas : en descendant, ce que ρgz perd, p le gagne. C\'est ce qui raccorde un écoulement à un tube au repos.'
+    };
+  };
+
+  F['pr:dynamique'] = () => {
+    const D = 5, kt = '0;0.75;1', ks = '0.15 0.7 0.35 1;0 0 1 1';
+    const seg = (cls, y1, h1, y2, h2) => '<rect x="322" width="22" class="' + cls + '" y="' + y1 + '" height="' + h1 + '">' + an('y', y1 + ';' + y2 + ';' + y2, D, kt, ' calcMode="spline" keySplines="' + ks + '"') + an('height', h1 + ';' + h2 + ';' + h2, D, kt, ' calcMode="spline" keySplines="' + ks + '"') + '</rect>';
+    return {
+      svg: svg(360, 160, 'Particule ralentie jusqu\'au point d\'arrêt d\'un obstacle', [
+        fl('M20,50 C200,50 220,38 268,38 L300,38'), fl('M20,120 C200,120 220,132 268,132 L300,132'), fl('M20,85 L236,85'),
+        '<path d="M300,55 L270,55 A30,30 0 0 0 270,115 L300,115 Z" class="solid"/>',
+        mov('M20,85 L236,85', D, { r: 5, c: 'particle hot', kp: '0;1;1', kt: kt, ks: ks }),
+        dot(240, 85, 'node', 3), T(150, 74, 'V → 0', 'lbl-pd small'), T(176, 106, 'point d\'arrêt :', 'small'), T(160, 120, 'p = p∞ + ½ρV²', 'small'),
+        seg('c-pd', 70, 50, 120, 0), seg('c-ps', 120, 30, 70, 80), T(333, 62, '½ρV²', 'mid lbl-pd small'), T(333, 162, 'p', 'mid lbl-ps small'),
+        '<line x1="316" y1="70" x2="350" y2="70" class="line-tot"/>', T(24, 40, 'V∞, p∞', 'lbl-m small')
+      ].join('')),
+      cap: 'En s\'arrêtant sur le nez de l\'obstacle, la particule convertit toute son énergie cinétique ½ρV² en pression : au point d\'arrêt, p vaut la pression totale. C\'est le principe du tube de Pitot.'
+    };
+  };
+
+  /* Méthode : les huit gestes */
+  F['m:repere'] = () => {
+    const D = 6;
+    return {
+      svg: svg(360, 165, 'Repère z vers le haut avec origine à la surface libre', [
+        rect(30, 60, 220, 92, 'water'), P('M30,30 L30,152 L250,152 L250,30', 'tank'), surf(30, 250, 60),
+        draw('M90,150 L90,24', 'arr-n', .02, .25, D), shown(.22, .97, D, '<polygon points="90,16 85,26 95,26" class="arr-n head"/>' + T(98, 24, 'z', 'lbl-n')),
+        shown(.25, .97, D, '<circle cx="90" cy="60" r="4" class="node"/>' + pulse(90, 60) + T(106, 50, 'O : z = 0', 'lbl-n small')),
+        shown(.4, .97, D, dot(170, 120, 'particle hot') + '<line x1="170" y1="60" x2="170" y2="120" class="lvl"/>' + T(178, 116, 'M : z_{M} < 0', 'small') + T(130, 142, 'p = p_{atm} − ρgz_{M}', 'lbl-ps small')),
+        A(300, 70, 300, 128, 'arr', 9), T(308, 104, 'g', 'lbl-l')
+      ].join('')),
+      cap: 'z vers le haut, g vers le bas, origine à la surface libre : sous la surface z est négatif, donc p = p_atm − ρgz est bien plus grand que p_atm.'
+    };
+  };
+
+  F['m:repos-ou-ecoulement'] = () => {
+    const sl = 'M240,52 C240,110 300,130 316,130 L350,130';
+    return {
+      svg: svg(360, 180, 'À gauche fluide au repos, à droite écoulement le long d\'une ligne de courant', [
+        rect(20, 50, 140, 100, 'water'), P('M20,30 L20,150 L160,150 L160,30', 'tank'), surf(20, 160, 50),
+        '<line x1="20" y1="85" x2="160" y2="85" class="isobar"/><line x1="20" y1="118" x2="160" y2="118" class="isobar"/>',
+        T(90, 18, 'Repos', 'mid'), T(90, 172, 'p + ρgz = cste', 'mid small'),
+        '<line x1="180" y1="10" x2="180" y2="160" class="gridl"/>',
+        rect(200, 52, 110, 98, 'water'), rect(310, 122, 44, 16, 'water'), P('M200,30 L200,150 L310,150 L310,138 L354,138 M310,122 L354,122 L354,122 M310,122 L310,30', 'tank'), surf(200, 310, 52),
+        fl(sl), mov(sl, 3, { r: 4, c: 'particle hot' }), T(270, 18, 'Écoulement', 'mid'), T(270, 172, 'Bernoulli sur la ligne', 'mid small')
+      ].join('')),
+      cap: 'Au repos (gauche), p + ρgz est le même dans tout le fluide. Dès que ça coule (droite), on suit une ligne de courant et on écrit Bernoulli entre deux de ses points.'
+    };
+  };
+
+  F['m:ligne-de-courant'] = () => siphon('Trace la ligne de courant pour de vrai, de la surface libre A jusqu\'au jet C, et place des points là où tu connais p, z ou V. Bernoulli s\'écrit entre deux points de cette ligne.');
+
+  F['m:choisir-a-et-b'] = () => {
+    const D = 6, jet = 'M200,128 Q250,128 268,170';
+    return {
+      svg: svg(360, 175, 'Choisir A à la surface libre et B dans le jet', [
+        rect(30, 50, 170, 100, 'water'), P('M30,24 L30,150 L200,150 L200,136 M200,120 L200,24', 'tank'), surf(30, 200, 50),
+        P(jet, 'tank', ' style="stroke:var(--water-deep);stroke-width:7"'), fl('M110,50 C110,110 170,128 200,128 Q250,128 268,170'), stream(jet, 1.4, 3, { r: 2.5 }),
+        shown(.05, .97, D, dot(110, 50, 'particle hot') + pulse(110, 50) + T(36, 70, 'A : p_{atm}', 'lbl-n small') + T(36, 84, 'V_{A} ≈ 0', 'lbl-n small')),
+        shown(.35, .97, D, dot(232, 132, 'particle hot') + pulse(232, 132) + T(244, 104, 'B : p = p_{atm}', 'lbl-n small') + T(244, 118, 'V_{B} ?', 'lbl-pd small')),
+        shown(.6, .97, D, T(115, 170, 'une seule inconnue : V_{B}', 'mid lbl-pd'))
+      ].join('')),
+      cap: 'Prends A et B là où tu sais le plus : une surface libre (p_atm, V ≈ 0) et un jet à l\'air libre (p_atm). Bernoulli entre eux ne laisse qu\'une inconnue.'
+    };
+  };
+
+  F['m:debit'] = () => {
+    const ax = 'M20,95 L140,95 C170,95 170,95 200,95 L340,95';
+    return {
+      svg: svg(360, 160, 'Conduite qui se rétrécit : même débit, vitesse trois fois plus grande', [
+        '<path d="M20,50 L140,50 C170,50 170,80 200,80 L340,80 L340,110 L200,110 C170,110 170,140 140,140 L20,140 Z" class="water"/>',
+        P('M20,50 L140,50 C170,50 170,80 200,80 L340,80 M20,140 L140,140 C170,140 170,110 200,110 L340,110', 'tank-thin'),
+        fl('M22,70 L136,70', 2.4), fl('M22,120 L136,120', 2.4), fl('M202,95 L338,95', .8),
+        stream(ax, 4.5, 5, { r: 3.5, kp: '0;0.37;1', kt: '0;0.75;1' }),
+        A(60, 95, 90, 95, 'arr-n', 7), T(60, 88, 'V₁', 'lbl-n small'), A(240, 95, 330, 95, 'arr-n', 8), T(250, 74, 'V₂ = 3V₁', 'lbl-n small'),
+        dimV(14, 50, 140, ''), T(4, 34, 'S₁', 'small'), T(290, 128, 'S₂ = S₁/3', 'small'),
+        T(180, 24, 'Q_{v} = V₁S₁ = V₂S₂', 'mid')
+      ].join('')),
+      cap: 'Le même volume passe chaque seconde dans toutes les sections : là où la section est trois fois plus petite, l\'eau va trois fois plus vite. C\'est l\'équation qui relie les vitesses entre elles.'
+    };
+  };
+
+  F['m:generatrice'] = () => {
+    const D = 4;
+    return {
+      svg: svg(360, 165, 'Tube piézométrique sur une conduite et jet à l\'air libre', [
+        rect(20, 110, 280, 40, 'water'), P('M20,110 L110,110 M126,110 L300,110 M20,150 L300,150', 'tank'),
+        rect(111, 46, 14, 64, 'water'), P('M110,20 L110,110 M126,20 L126,110', 'tank-thin'), surf(106, 130, 46),
+        fl('M22,120 L298,120'), fl('M22,140 L298,140'), P('M300,112 Q330,112 350,150', 'tank', ' style="stroke:var(--water-deep);stroke-width:12"'),
+        '<line x1="118" y1="46" x2="118" y2="150" class="sec-n"/>',
+        '<circle cx="118" cy="148" r="4.5" class="particle hot cf-mov"><animate attributeName="cy" values="148;48;148" dur="' + D + 's"' + R + '/></circle>',
+        T(140, 60, 'tube au repos :', 'small'), T(140, 74, 'p + ρgz = cste', 'small'),         T(352, 98, 'jet : p = p_{atm}', 'lbl-n small" text-anchor="end')
+      ].join('')),
+      cap: 'Sous le tube et dans le tube, la quantité p + ρgz est la même : la hauteur d\'eau dans le tube lit donc la pression de la conduite. Dans un jet à l\'air libre, elle impose p = p_atm.'
+    };
+  };
+
+  F['m:bilan'] = () => {
+    const D = 7;
+    return {
+      svg: svg(360, 170, 'Bilan de charge en cascade : départ, apport de la pompe, pertes, arrivée', [
+        '<line x1="20" y1="150" x2="340" y2="150" class="ax"/>',
+        growUp(30, 150, 50, 70, 'c-ps', .02, .15, D),
+        '<rect x="110" y="30" width="50" height="50" class="c-pg">' + an('height', '0;0;50;50', D, '0;0.2;0.35;1') + an('y', '80;80;30;30', D, '0;0.2;0.35;1') + '</rect>',
+        '<rect x="190" y="30" width="50" height="35" class="c-loss">' + an('height', '0;0;35;35', D, '0;0.4;0.55;1') + '</rect>',
+        growUp(270, 150, 50, 85, 'c-ps', .6, .75, D),
+        '<line x1="80" y1="80" x2="110" y2="80" class="lvl"/><line x1="160" y1="30" x2="190" y2="30" class="lvl"/><line x1="240" y1="65" x2="270" y2="65" class="lvl"/>',
+        T(55, 164, 'p_{t,A}', 'mid small'), T(135, 164, '+ pompe', 'mid lbl-pg small'), T(215, 164, '− pertes', 'mid lbl-loss small'), T(295, 164, 'p_{t,B}', 'mid small'),
+        T(180, 16, 'p_{t,B} = p_{t,A} + Δp_{pompe} − ΣΔp', 'mid small')
+      ].join('')),
+      cap: 'Le bilan se lit comme un compte en banque : on part de la charge en A, la pompe en ajoute, les pertes en retirent, il reste la charge en B.'
+    };
+  };
+
+  F['m:verifier'] = () => {
+    const D = 3;
+    return {
+      svg: svg(360, 150, 'Trois vérifications : cavitation, nombre de Mach, régime d\'écoulement', [
+        // cavitation
+        '<path d="M10,60 L40,60 C55,60 55,72 70,72 L80,72 C95,72 95,60 110,60 L110,100 L95,100 C80,100 80,88 70,88 L60,88 C55,88 55,100 40,100 L10,100 Z" class="water"/>',
+        P('M10,60 L40,60 C55,60 55,72 70,72 L80,72 C95,72 95,60 110,60 M10,100 L40,100 C55,100 55,88 70,88 L80,88 C95,88 95,100 110,100', 'tank-thin'),
+        bubbles(62, 76, 20, 1.4, 5), T(60, 30, 'p > p_{vs}', 'mid small'), T(60, 130, 'sinon cavitation', 'mid lbl-l small'),
+        // Mach
+        '<path d="M140,100 A40,40 0 0 1 220,100" class="ax"/><path d="M140,100 A40,40 0 0 1 152,72" class="arr-f" style="stroke-width:5"/>',
+        '<line x1="180" y1="100" x2="148" y2="86" class="barl" style="stroke-width:3"><animateTransform attributeName="transform" type="rotate" values="0 180 100;14 180 100;0 180 100" dur="' + D + 's"' + R + '/></line>',
+        dot(180, 100, 'node', 4), T(180, 30, 'Ma < 0,3', 'mid small'), T(180, 130, 'V < 100 m/s', 'mid lbl-m small'),
+        // Re
+        fl('M250,62 L350,62'), '<path d="M250,92 Q262,82 274,92 T298,92 T322,92 T346,92" class="curve-e cf-flow" style="stroke-dasharray:6 4"/>',
+        T(252, 54, 'laminaire : 64/Re', 'lbl-m small" style="font-size:9.5px'), T(252, 112, 'turbulent : Blasius', 'lbl-m small" style="font-size:9.5px'),
+        T(300, 30, 'Re ↔ Λ', 'mid small'), T(300, 130, 'seuil Re = 2000', 'mid lbl-m small')
+      ].join('')),
+      cap: 'Avant de conclure : la pression reste-t-elle au-dessus de la pression de vapeur saturante ? Le gaz est-il bien incompressible (Mach < 0,3) ? Le coefficient Λ choisi correspond-il au régime donné par Re ?'
+    };
+  };
+
+  /* Ordres de grandeur */
+  F['n:patm'] = () => {
+    let mol = ''; for (let k = 0; k < 14; k++) { const x = 120 + (k * 47) % 110, y = 20 + (k * 29) % 100; mol += '<circle cx="' + x + '" cy="' + y + '" r="2.5" class="particle" opacity=".55"><animateTransform attributeName="transform" type="translate" values="0 0;' + ((k % 3) - 1) * 4 + ' 6;0 0" dur="' + (1.6 + (k % 4) * .4) + 's"' + R + '/></circle>'; }
+    return {
+      svg: svg(360, 160, 'Colonne d\'air au-dessus d\'un mètre carré', [
+        '<rect x="120" y="10" width="110" height="120" style="fill:color-mix(in srgb, var(--node) 7%, transparent)"/>', mol,
+        rect(120, 130, 110, 10, 'solid'), rect(60, 140, 230, 8, 'wall'),
+        A(150, 92, 150, 126, 'arr-n', 7), A(175, 92, 175, 126, 'arr-n', 7), A(200, 92, 200, 126, 'arr-n', 7),
+        T(175, 156, '1 m²', 'mid lbl-m small'), T(244, 40, 'p_{atm}', 'lbl-ps'), T(244, 58, '101 325 Pa', 'small'), T(244, 74, '≈ 1 bar = 10⁵ Pa', 'small'),
+        T(244, 100, '≈ 10 t sur 1 m²', 'lbl-m small'), T(10, 40, 'colonne d\'air', 'lbl-m small'), T(10, 54, 'jusqu\'en haut', 'lbl-m small')
+      ].join('')),
+      cap: 'Le poids de toute la colonne d\'air au-dessus d\'un mètre carré : environ 10⁵ N, soit 10 tonnes. On retient p_atm ≈ 1 bar = 10⁵ Pa.'
+    };
+  };
+
+  F['n:10-m-d-eau'] = () => {
+    const D = 5, kt = '0;0.6;1';
+    let ticks = ''; for (let k = 0; k <= 10; k += 2) ticks += '<line x1="96" y1="' + (150 - k * 12) + '" x2="102" y2="' + (150 - k * 12) + '" class="ax"/>' + T(92, 154 - k * 12, k + ' m', 'end lbl-m small');
+    return {
+      svg: svg(360, 165, 'Colonne d\'eau de 10 m et pression au fond', [
+        '<rect x="110" y="30" width="40" height="120" class="water">' + an('y', '150;30;30', D, kt) + an('height', '0;120;120', D, kt) + '</rect>',
+        P('M110,20 L110,150 L150,150 L150,20', 'tank'), '<line x1="100" y1="30" x2="100" y2="150" class="ax"/>', ticks,
+        '<circle cx="130" cy="150" r="5" class="ball"/>', '<line x1="135" y1="150" x2="200" y2="150" class="lvl"/>',
+        rect(200, 140, 120, 16, 'probe'), '<rect x="202" y="142" width="116" height="12" class="c-ps">' + an('width', '0;116;116', D, kt) + '</rect>',
+        T(200, 134, '0', 'lbl-m small'), T(320, 134, '1 bar', 'end lbl-ps small'),
+        T(200, 60, 'ρgh = 1000 × 9,81 × 10', 'small'), T(200, 76, '= 98 100 Pa ≈ 1 bar', 'lbl-ps small'), T(200, 100, 'chaque mètre d\'eau :', 'lbl-m small'), T(200, 113, '≈ 0,1 bar', 'lbl-m small')
+      ].join('')),
+      cap: 'Remplir 10 m d\'eau ajoute environ 1 bar au fond : un plongeur à 10 m subit 2 bar absolus. Chaque mètre d\'eau compte pour 0,1 bar.'
+    };
+  };
+
+  F['n:0-76-m-de-mercure'] = () => {
+    const D = 5, kt = '0;0.5;1';
+    return {
+      svg: svg(360, 180, 'Baromètre de Torricelli : colonne de 76 cm de mercure sous le vide', [
+        rect(40, 120, 140, 35, 'merc'), P('M40,105 L40,155 L180,155 L180,105', 'tank'),
+        '<rect x="101" y="46" width="18" height="100" class="merc">' + an('y', '20;46;46', D, kt) + an('height', '126;100;100', D, kt) + '</rect>',
+        P('M100,146 L100,18 L120,18 L120,146', 'tank-thin'), T(126, 32, 'vide (p ≈ 0)', 'lbl-m small'),
+        dimV(136, 46, 120, '0,76 m'),
+        A(60, 92, 60, 118, 'arr-n', 7), A(160, 92, 160, 118, 'arr-n', 7), T(46, 86, 'p_{atm}', 'lbl-ps small'),
+        // comparaison eau
+        '<rect x="260" y="20" width="16" height="135" class="water"/>', P('M259,155 L259,20 M277,20 L277,155', 'tank-thin'),
+        '<path d="M254,70 L282,64 M254,76 L282,70" class="ax"/>', T(286, 40, 'eau :', 'small'), T(286, 54, '10,3 m', 'small'),
+        T(180, 175, 'ρ_{Hg} ≈ 13,5 ρ_{eau}', 'mid lbl-m small')
+      ].join('')),
+      cap: 'La pression atmosphérique tient une colonne de 76 cm de mercure au-dessus du vide. Avec de l\'eau, 13,5 fois moins dense, il faudrait plus de 10 m.'
+    };
+  };
+
+  F['n:kg-m'] = () => {
+    const D = 6, rows = [['eau', 1000], ['essence', 750], ['mercure', 13546], ['air', 1.2]];
+    let s = '';
+    rows.forEach(([n, r], i) => {
+      const y = 28 + i * 34, full = Math.floor(r / 1000), part = (r % 1000) / 1000;
+      s += T(70, y + 12, n, 'end small');
+      for (let k = 0; k < full; k++) s += '<rect x="' + (78 + k * 16) + '" y="' + y + '" width="14" height="16" class="' + (n === 'mercure' ? 'merc' : 'water-deep') + '" style="stroke:var(--ink);stroke-width:.8">' + show(Math.min(.05 + k * .035, .8), .97, D) + '</rect>';
+      if (part > .0005) s += '<rect x="' + (78 + full * 16) + '" y="' + y + '" width="' + Math.max(14 * part, 1.2).toFixed(1) + '" height="16" class="' + (n === 'essence' ? 'oil' : n === 'air' ? 'airf' : 'merc') + '" style="stroke:var(--ink);stroke-width:.8"/>';
+      s += T(78 + (full + (part > .0005 ? 1 : 0)) * 16 + (n === 'air' ? 4 : 2), y + 12, r.toLocaleString('fr-FR'), 'lbl-n small');
+    });
+    return {
+      svg: svg(360, 165, 'Masses volumiques comparées, un carré pour 1000 kg/m³', s + T(78, 160, '1 carré = 1000 kg/m³', 'lbl-m small')),
+      cap: 'Un carré = la masse volumique de l\'eau. L\'essence en fait les trois quarts, le mercure 13,5 carrés, et l\'air à peine un millième : invisible à cette échelle.'
+    };
+  };
+
+  F['n:pvs-eau-20-c'] = () => ({
+    svg: svg(360, 170, 'Col de Venturi où la pression passe sous la pression de vapeur saturante : bulles de cavitation', [
+      '<path d="M20,30 L110,30 C140,30 145,48 170,48 L190,48 C215,48 220,30 250,30 L340,30 L340,80 L250,80 C220,80 215,62 190,62 L170,62 C145,62 140,80 110,80 L20,80 Z" class="water"/>',
+      P('M20,30 L110,30 C140,30 145,48 170,48 L190,48 C215,48 220,30 250,30 L340,30 M20,80 L110,80 C140,80 145,62 170,62 L190,62 C215,62 220,80 250,80 L340,80', 'tank-thin'),
+      fl('M22,55 L338,55', .5), bubbles(164, 50, 36, 1.2, 7),
+      A(20, 160, 20, 92, 'arr-m', 6), T(26, 98, 'p', ''), '<line x1="20" y1="160" x2="345" y2="160" class="gridl"/>',
+      '<line x1="20" y1="138" x2="345" y2="138" class="lvl" style="stroke:var(--load)"/>', T(344, 134, 'p_{vs} = 2340 Pa', 'end lbl-l small'),
+      '<path d="M20,104 L110,106 C140,108 145,150 170,150 L190,150 C215,150 220,112 250,112 L340,114" class="line-ps"/>',
+      '<rect x="160" y="138" width="40" height="13" class="danger"/>', T(180, 98, 'bulles : l\'eau bout', 'mid lbl-l small')
+    ].join('')),
+    cap: 'Au col, la vitesse monte et la pression chute. Si elle passe sous 2340 Pa (eau à 20 °C), l\'eau se vaporise : des bulles se forment puis implosent, c\'est la cavitation.'
+  });
+
+  F['n:incompressible'] = () => {
+    const D = 6;
+    return {
+      svg: svg(360, 140, 'Échelle de vitesse : un gaz est incompressible tant que Mach reste sous 0,3', [
+        '<rect x="30" y="56" width="88" height="22" class="vol" style="stroke-dasharray:none"/>', '<rect x="118" y="56" width="212" height="22" class="danger"/>',
+        '<line x1="30" y1="78" x2="330" y2="78" class="ax"/>',
+        T(30, 94, '0', 'mid lbl-m small'), T(118, 94, '100 m/s', 'mid small'), T(330, 94, '340 m/s', 'mid lbl-m small'),
+        T(118, 108, 'Ma = 0,3', 'mid lbl-n small'), T(330, 108, 'Ma = 1', 'mid lbl-m small'),
+        T(74, 48, 'incompressible', 'mid lbl-f small'), T(224, 48, 'ρ varie : compressible', 'mid lbl-l small'),
+        '<g class="cf-mov"><path d="M-10,-4 L6,-4 L12,0 L6,4 L-10,4 L-12,-8 L-6,-4 Z" class="solid"/><animateTransform attributeName="transform" type="translate" values="30 67;320 67;30 67" dur="' + D + 's"' + R + '/></g>',
+        T(180, 130, 'liquides : toujours incompressibles', 'mid small')
+      ].join('')),
+      cap: 'Un gaz se comporte comme un fluide incompressible tant que sa vitesse reste sous 0,3 fois celle du son, environ 100 m/s dans l\'air. Les liquides le sont toujours.'
+    };
+  };
+
+  /* Étapes du médian */
+  ['1-schema', '2-hypotheses', '3-ligne-de-courant', '4-completer', '5-litteral-puis-a-n', '6-commenter'].forEach((k, i) => { F['e:' + k] = () => exam(i); });
+
+  /* Pièges et réflexes */
+  F['p:le-signe-de-z'] = () => {
+    const D = 4, kt = '0;0.5;1';
+    const half = (x0, up) => [
+      rect(x0, 46, 140, 96, 'water'), P('M' + x0 + ',26 L' + x0 + ',142 L' + (x0 + 140) + ',142 L' + (x0 + 140) + ',26', 'tank'), surf(x0, x0 + 140, 46),
+      up ? A(x0 + 24, 138, x0 + 24, 20, 'arr-n', 7) : A(x0 + 24, 40, x0 + 24, 136, 'arr-n', 7),
+      T(x0 + 30, up ? 36 : 134, 'z', 'lbl-n'),
+      '<circle cx="' + (x0 + 90) + '" cy="50" r="5" class="particle hot">' + an('cy', '50;134;50', D, kt) + '</circle>',
+      T(x0 + 70, 14, up ? 'z vers le haut' : 'z vers le bas', 'mid small'),
+      T(x0 + 70, 162, up ? 'p = p_{atm} − ρgz' : 'p = p_{atm} + ρgz', 'mid lbl-ps small'),
+      T(x0 + 70, 176, up ? '(z < 0 sous la surface)' : '(z > 0 sous la surface)', 'mid lbl-m small')
+    ].join('');
+    return {
+      svg: svg(360, 182, 'Même pression, deux conventions pour z', half(10, true) + '<line x1="180" y1="10" x2="180" y2="175" class="gridl"/>' + half(210, false)),
+      cap: 'La pression augmente avec la profondeur dans les deux cas ; seul le signe devant ρgz change avec le sens de l\'axe. Choisis une convention et tiens-la partout.'
+    };
+  };
+
+  F['p:pression-absolue-ou-relative'] = () => {
+    const D = 6;
+    return {
+      svg: svg(360, 165, 'Pression absolue et relative ; la pression atmosphérique s\'annule de part et d\'autre d\'une paroi', [
+        '<line x1="50" y1="150" x2="50" y2="20" class="ax"/>', T(56, 154, '0 (vide)', 'lbl-m small'),
+        '<line x1="44" y1="90" x2="56" y2="90" class="ax"/>', T(60, 94, 'p_{atm}', 'lbl-m small'), '<line x1="44" y1="40" x2="56" y2="40" class="ax"/>', T(60, 44, 'p', 'small'),
+        A(30, 150, 30, 42, 'arr-n', 7), T(26, 20, 'absolue', 'lbl-n small" text-anchor="middle'),
+        A(100, 90, 100, 42, 'arr-f', 7), T(108, 70, 'relative', 'lbl-f small'),
+        '<line x1="160" y1="10" x2="160" y2="160" class="gridl"/>',
+        rect(180, 40, 70, 110, 'water'), surf(180, 250, 40), rect(250, 30, 8, 120, 'plate" style="stroke-width:0;fill:var(--ink)'),
+        '<polygon points="250,40 250,150 200,150" class="pdiag"/>',
+        '<g>' + an('opacity', '1;1;0;0;1', D, '0;0.35;0.55;0.92;1') + A(206, 60, 248, 60, 'arr-m', 6) + A(206, 100, 248, 100, 'arr-m', 6) + A(302, 60, 260, 60, 'arr-m', 6) + A(302, 100, 260, 100, 'arr-m', 6) + T(304, 84, 'p_{atm}', 'lbl-m small') + T(304, 64, 'air', 'lbl-m small') + '</g>',
+        T(172, 22, 'p_{atm} des 2 côtés : s\'annule', 'small" style="font-size:9.5px'), T(186, 164, 'il reste ρgh', 'lbl-ps small')
+      ].join('')),
+      cap: 'La pression relative se compte à partir de p_atm. Sur une paroi avec de l\'air de l\'autre côté, p_atm pousse des deux côtés et s\'annule : seul ρgh compte. Pour la cavitation ou un gaz parfait, il faut la pression absolue.'
+    };
+  };
+
+  F['p:sp-sous-g'] = () => {
+    const D = 7, ux = .7365, uy = .6765, nx = .6765, ny = -.7365; // u le long de la plaque, n vers l'eau
+    const at = (f) => [110 + 163 * f * ux, 40 + 163 * f * uy];
+    let ar = '';
+    [.15, .3, .45, .6, .75, .9].forEach((f, i) => { const [x, y] = at(f), L = (y - 40) * .55; ar += shown(.04 + i * .04, .96, D, A(x + nx * L, y + ny * L, x + nx * 2, y + ny * 2, 'parr', 5)); });
+    const [gx, gy] = at(.5), [px, py] = at(2 / 3), off = (f, d) => { const [x, y] = at(f); return [x - nx * d, y - ny * d]; };
+    const s0 = off(0, 30), sG = off(.5, 30), sP = off(2 / 3, 46), s00 = off(0, 46), lG = off(.5, 13), lP = off(2 / 3, 13);
+    return {
+      svg: svg(360, 178, 'Plaque inclinée : centre de poussée sous le centre de gravité, s mesuré le long de la plaque', [
+        '<polygon points="110,40 340,40 340,160 230,160 230,150.1" class="water"/>', surf(110, 340, 40),
+        '<line x1="110" y1="40" x2="230" y2="150.1" class="plate"/>', ar,
+        dot(gx, gy, 'node'), T(lG[0] - 4, lG[1] + 5, 'G', 'lbl-n'), shown(.4, .96, D, dot(px, py, 'particle hot') + T(lP[0] - 4, lP[1] + 5, 'P', 'lbl-pd')),
+        '<g>' + show(.3, .96, D) + '<animateTransform attributeName="transform" type="translate" values="0 0;0 0;' + n1(px - gx) + ' ' + n1(py - gy) + ';' + n1(px - gx) + ' ' + n1(py - gy) + '" keyTimes="0;0.45;0.6;1" dur="' + D + 's"' + R + '/>' + A(gx + nx * 70, gy + ny * 70, gx + nx * 3, gy + ny * 3, 'arr', 10) + T(gx + nx * 70 + 4, gy + ny * 70, 'F', 'lbl-l') + '</g>',
+        A(s0[0], s0[1], sG[0], sG[1], 'arr-n', 6), T(sG[0] - 6, sG[1] + 14, 's_{G}', 'lbl-n small'),
+        shown(.5, .96, D, A(s00[0], s00[1], sP[0], sP[1], 'arr', 6) + T(sP[0] - 6, sP[1] + 14, 's_{P}', 'lbl-pd small')),
+        T(12, 20, 's se mesure le long de la plaque,', 'small'), T(12, 33, 'depuis la surface libre', 'small'),
+        T(240, 112, 's_{P} = s_{G} + I_{G}/(S s_{G})', 'small" style="font-size:9.5px'), T(240, 128, '> s_{G} : toujours', 'lbl-pd small')
+      ].join('')),
+      cap: 'La pression est plus forte en bas de la plaque : la résultante s\'applique donc sous G, au centre de poussée P. Les distances s se mesurent le long de la plaque, à partir de la surface libre.'
+    };
+  };
+
+  F['p:bernoulli-a-travers-une-pompe'] = () => {
+    const D = 7;
+    return {
+      svg: svg(360, 160, 'Bernoulli interdit à travers une pompe : on l\'écrit de part et d\'autre', [
+        rect(20, 110, 320, 24, 'water'), P('M20,110 L167,110 M193,110 L340,110 M20,134 L167,134 M193,134 L340,134', 'tank-thin'), fl('M22,122 L338,122'), pump(180, 122),
+        '<path d="M30,70 L168,70 L192,36 L330,36" class="line-tot"/>', T(34, 64, 'p_{t,1}', 'small'), T(326, 30, 'p_{t,2}', 'end small'), T(200, 60, '+Δp_{pompe}', 'lbl-pg small'),
+        before(.05, .4, D, '<path d="M40,100 Q180,60 320,100" class="curve-e" style="stroke:var(--load)"/>' + T(180, 92, '✗', 'mid lbl-l big') + T(180, 152, 'A → B à travers la pompe : interdit', 'mid lbl-l small')),
+        shown(.45, .97, D, '<path d="M40,100 Q100,84 160,100" class="curve-f"/><path d="M200,100 Q260,84 320,100" class="curve-f"/>' + T(100, 84, 'Bernoulli', 'mid lbl-f small') + T(260, 84, 'Bernoulli', 'mid lbl-f small') + T(180, 152, 'avant, puis après : p_{t,2} = p_{t,1} + Δp_{pompe}', 'mid lbl-f small" style="font-size:9.5px'))
+      ].join('')),
+      cap: 'Une pompe fournit de l\'énergie : la charge saute en la traversant, donc Bernoulli ne s\'écrit pas d\'un côté à l\'autre. On l\'écrit avant et après, ou on utilise Bernoulli généralisé avec +Δp_pompe.'
+    };
+  };
+
+  F['p:lignes-de-courant-paralleles'] = () => ({
+    svg: svg(360, 170, 'Vase de Mariotte : lignes de courant verticales dans le réservoir, jet à pression atmosphérique', [
+      rect(40, 40, 160, 115, 'water'), P('M40,155 L40,30 L200,30 L200,128 M200,144 L200,155 L40,155', 'tank'),
+      rect(104, 40, 12, 64, 'airf'), P('M104,10 L104,104 M116,10 L116,104', 'tank-thin'), bubbles(104, 104, 12, 1.4, 3),
+      fl('M64,44 L64,150', 2), fl('M160,44 L160,150', 2), fl('M184,44 L184,150', 2),
+      '<line x1="40" y1="104" x2="200" y2="104" class="isobar"/>', T(206, 100, 'p = p_{atm} ici', 'lbl-n small'), T(206, 113, 'p + ρgz = cste', 'lbl-n small'), T(206, 126, 'sur l\'horizontale', 'lbl-n small'),
+      P('M200,136 Q250,136 268,168', 'tank', ' style="stroke:var(--water-deep);stroke-width:12"'), stream('M200,136 Q250,136 268,168', 1.2, 3, { r: 2.5 }),
+      T(276, 160, 'jet : p_{atm}', 'lbl-n small'), T(124, 24, 'lignes verticales', 'lbl-m small')
+    ].join('')),
+    cap: 'Dans un réservoir de section constante, l\'eau descend tout droit : les lignes de courant sont parallèles, donc p + ρgz est constant sur une horizontale. Le jet est à p_atm dès la sortie.'
+  });
+
+  F['p:une-inconnue-par-equation'] = () => {
+    const D = 8, cell = (x, y, s, c) => rect(x, y, 70, 26, 'probe" style="stroke-width:1.2') + T(x + 35, y + 17, s, 'mid small' + (c ? ' ' + c : ''));
+    return {
+      svg: svg(360, 165, 'Bernoulli entre A et B : on réduit les inconnues à une seule', [
+        T(95, 22, 'A', 'mid lbl-n'), T(175, 22, 'B', 'mid lbl-n'),
+        T(52, 47, 'p', 'end small'), T(52, 77, 'z', 'end small'), T(52, 107, 'V', 'end small'),
+        cell(60, 30, 'p_{atm} ✓'), cell(140, 30, 'p_{atm} ✓'), cell(60, 60, 'z_{A} ✓'), cell(140, 60, 'z_{B} ✓'),
+        cell(140, 90, 'V_{B} ?', 'lbl-pd'),
+        fadeOut(.45, .5, D, cell(60, 90, 'V_{A} ?', 'lbl-pd')),
+        '<g>' + show(.48, .95, D) + cell(60, 90, 'V_{B}S_{B}/S_{A}', 'lbl-f" style="font-size:9.5px') + '</g>',
+        shown(.25, .95, D, T(230, 50, 'débit :', 'small') + T(230, 64, 'V_{A}S_{A} = V_{B}S_{B}', 'small') + A(228, 80, 134, 103, 'arr-f', 7)),
+        fadeOut(.45, .5, D, T(180, 150, '2 inconnues, 1 équation : bloqué', 'mid lbl-l small')),
+        '<g>' + show(.5, .95, D) + T(180, 150, '1 inconnue, 1 équation : on conclut', 'mid lbl-f small') + '</g>'
+      ].join('')),
+      cap: 'Bernoulli est une seule équation scalaire. S\'il reste deux inconnues, il faut une seconde relation : le débit, la génératrice ou l\'hydrostatique.'
+    };
+  };
+
+  F['p:repere-mobile'] = () => {
+    const D = 4, train = (x, y) => '<path d="M' + x + ',' + y + ' L' + (x + 70) + ',' + y + ' Q' + (x + 95) + ',' + y + ' ' + (x + 95) + ',' + (y + 25) + ' L' + x + ',' + (y + 25) + ' Z" class="solid"/>';
+    let still = ''; for (let k = 0; k < 8; k++) still += dot(20 + k * 20, 40 + (k % 3) * 14, 'particle', 2);
+    return {
+      svg: svg(360, 160, 'Train dans l\'air immobile, puis vu depuis le train : écoulement stationnaire', [
+        T(90, 18, 'repère du sol', 'mid small'), still,
+        '<g class="cf-mov">' + train(0, 90) + '<animateTransform attributeName="transform" type="translate" values="-20 0;90 0" dur="' + D + 's"' + R + '/></g>',
+        '<line x1="10" y1="118" x2="170" y2="118" class="ax"/>', T(90, 140, 'tout bouge : instationnaire', 'mid lbl-l small'),
+        '<line x1="180" y1="10" x2="180" y2="155" class="gridl"/>',
+        T(270, 18, 'repère du train', 'mid small'),
+        fl('M350,60 L196,60', .7), fl('M350,78 L320,78 Q300,78 290,88 L196,88', .7), fl('M350,124 L196,124', .7), train(196, 92), '<line x1="292" y1="104" x2="306" y2="104" class="tank-thin"/>',
+        T(270, 140, 'stationnaire : Bernoulli', 'mid lbl-f small'), T(270, 152, 'Pitot : V relative à l\'air', 'mid lbl-m small')
+      ].join('')),
+      cap: 'Vu du sol, le train traverse l\'air : rien n\'est stationnaire. Vu du train, c\'est l\'air qui défile, toujours de la même façon : Bernoulli s\'applique, avec la vitesse relative.'
+    };
+  };
+
+  F['p:unites'] = () => {
+    const D = 6, rows = [['m de Hg', '× ρ_{Hg}g', 'Pa'], ['L/min', '÷ 60 000', 'm³/s'], ['m³/h', '÷ 3600', 'm³/s'], ['km/h', '÷ 3,6', 'm/s']];
+    let s = '';
+    rows.forEach(([a, op, b], i) => {
+      const y = 24 + i * 36;
+      s += rect(20, y, 90, 24, 'probe" style="stroke-width:1.2') + T(65, y + 16, a, 'mid small') + rect(250, y, 90, 24, 'probe" style="stroke-width:1.2') + T(295, y + 16, b, 'mid small');
+      s += '<line x1="114" y1="' + (y + 12) + '" x2="240" y2="' + (y + 12) + '" class="gridl" style="stroke-width:2"/>' + T(180, y + 7, op, 'mid lbl-n small');
+      s += mov('M114,' + (y + 12) + ' L242,' + (y + 12), D / 2, { r: 4, c: 'particle hot', begin: -i * .35 });
+    });
+    return { svg: svg(360, 168, 'Conversions d\'unités à vérifier', s), cap: 'Les conversions qui coûtent des points : une hauteur de mercure n\'est pas une pression tant qu\'on ne l\'a pas multipliée par ρ_Hg g, et un débit se met en m³/s avant tout calcul.' };
+  };
+
+  F['p:tracer-la-ligne-de-courant-d-abord'] = () => siphon('Le corrigé du siphon commence toujours ainsi : la ligne de courant de la surface libre A jusqu\'à la sortie C, avec les points où l\'on connaît p, z ou V. Le point haut B est le plus exposé à la cavitation.');
+
+  F['p:reservoir-de-grandes-dimensions'] = () => {
+    const D = 6, jet = 'M260,136 Q300,136 318,170';
+    return {
+      svg: svg(360, 175, 'Grand réservoir et petit orifice : la surface descend à peine, le jet est rapide', [
+        '<rect x="20" y="40" width="240" height="114" class="water">' + an('y', '40;50;40', D, '0;0.95;1') + an('height', '114;104;114', D, '0;0.95;1') + '</rect>',
+        P('M20,20 L20,154 L260,154 L260,144 M260,128 L260,20', 'tank'),
+        '<g>' + '<animateTransform attributeName="transform" type="translate" values="0 0;0 10;0 0" keyTimes="0;0.95;1" dur="' + D + 's"' + R + '/>' + surf(20, 260, 40) + A(140, 44, 140, 52, 'arr-n', 5) + T(148, 54, 'V_{A} ≈ 0', 'lbl-n small') + '</g>',
+        P(jet, 'tank', ' style="stroke:var(--water-deep);stroke-width:7"'), stream(jet, .8, 4, { r: 2.5 }), A(262, 120, 320, 120, 'arr-n', 8), T(270, 112, 'V_{C}', 'lbl-n small'),
+        T(30, 104, 'S_{A} ≫ S_{C}', 'small'), T(30, 120, 'V_{A} = V_{C} S_{C}/S_{A} ≈ 0', 'small'), T(30, 140, '→ quasi stationnaire', 'lbl-m small')
+      ].join('')),
+      cap: 'Le débit est le même à la surface et à l\'orifice : la surface, énorme, descend presque sans vitesse, d\'où V_A ≈ 0. C\'est aussi ce qui rend l\'écoulement quasi stationnaire.'
+    };
+  };
+
+  F['p:bernoulli-du-point-connu-vers-l-inconnu'] = () => {
+    const D = 6;
+    const r = (x0, x1) => mov('M' + x0 + ',80 L' + x1 + ',80', 2.4, { r: 3, kp: '0;0.5;1', kt: '0;0.3;1' });
+    return {
+      svg: svg(360, 160, 'Bobine : écoulement radial entre deux disques, Bernoulli depuis le bord où p = p_atm', [
+        rect(40, 66, 280, 28, 'water'), rect(172, 14, 16, 52, 'water'), P('M40,66 L172,66 L172,14 M188,14 L188,66 L320,66 M40,94 L320,94', 'tank'),
+        fl('M180,16 L180,78', .6), r(180, 330), r(180, 30), mov('M180,80 L330,80', 2.4, { r: 3, kp: '0;0.5;1', kt: '0;0.3;1', begin: -1.2 }), mov('M180,80 L30,80', 2.4, { r: 3, kp: '0;0.5;1', kt: '0;0.3;1', begin: -1.2 }),
+        dot(180, 80, 'probe', 5), T(180, 118, 'centre : p ?', 'mid lbl-l small'),
+        dot(320, 80, 'node', 5), T(326, 112, 'r₂ : p_{atm}', 'end lbl-n small'), dot(250, 80, 'particle hot', 5), T(250, 112, 'r', 'mid lbl-pd small'),
+        shown(.2, .96, D, A(316, 52, 256, 52, 'arr-f', 8) + T(286, 40, 'du connu vers l\'inconnu', 'mid lbl-f small')),
+        T(180, 142, 'V(r) = Q/(2πre) : connue partout', 'mid lbl-m small')
+      ].join('')),
+      cap: 'Entre les disques, l\'eau file vers le bord où elle sort à p_atm. Pars de ce point connu (r₂) pour remonter vers r, et pas du centre où p est justement l\'inconnue.'
+    };
+  };
+
+  F['p:sortie-a-l-air-libre'] = () => {
+    const D = 3;
+    return {
+      svg: svg(360, 160, 'Jet libre à pression atmosphérique qui frappe une plaque : point d\'arrêt', [
+        rect(10, 66, 60, 28, 'water'), P('M10,62 L70,62 L70,66 M10,98 L70,98 L70,94', 'tank'),
+        '<path d="M70,66 L250,66 Q280,66 280,30 L280,10 L298,10 L298,150 L280,150 L280,130 Q280,94 250,94 L70,94 Z" class="water" opacity=".8"/>', rect(298, 10, 14, 140, 'wall'),
+        mov('M20,80 L294,80', D, { r: 4, c: 'particle hot', kp: '0;0.8;1;1', kt: '0;0.55;0.85;1' }),
+        stream('M20,72 L240,72 Q284,72 288,14', 1.6, 3, { r: 2.5 }), stream('M20,88 L240,88 Q284,88 288,146', 1.6, 3, { r: 2.5 }),
+        T(90, 52, 'dans le jet : p = p_{atm}', 'lbl-n small'), dot(296, 80, 'node', 4), T(240, 118, 'arrêt :', 'end small'), T(240, 132, 'V = 0, p = p_{t}', 'end small')
+      ].join('')),
+      cap: 'Dans un jet à l\'air libre, les lignes de courant sont parallèles et la pression vaut p_atm dès la sortie. Au point d\'arrêt sur la plaque, V = 0 et la pression vaut la charge p_t.'
+    };
+  };
+
+  F['p:bernoulli-hydrostatique-en-boucle'] = () => {
+    const D = 4;
+    return {
+      svg: svg(360, 170, 'Tube de Pitot et manomètre en U : Bernoulli dans l\'écoulement, hydrostatique dans les tubes', [
+        '<rect x="10" y="20" width="340" height="44" style="fill:color-mix(in srgb, var(--node) 7%, transparent)"/>',
+        rect(10, 26, 340, 34, 'water'), P('M10,26 L350,26 M10,60 L118,60 M128,60 L262,60 M272,60 L350,60', 'tank'), fl('M12,36 L348,36', .6), fl('M12,50 L240,50', .6),
+        P('M250,43 L267,43 L267,60', 'tank-thin" style="stroke-width:5;stroke:var(--water-deep)'),
+        rect(118, 60, 10, 50, 'water'), rect(262, 60, 10, 70, 'water'),
+        '<path d="M118,110 L118,150 Q118,158 126,158 L264,158 Q272,158 272,150 L272,130 L262,130 L262,148 L128,148 L128,110 Z" class="merc"/>',
+        P('M118,60 L118,150 Q118,158 126,158 L264,158 Q272,158 272,150 L272,60 M128,60 L128,148 L262,148 L262,60', 'tank-thin'),
+        dimV(290, 110, 130, 'h'), '<line x1="128" y1="110" x2="296" y2="110" class="lvl"/>',
+        T(20, 16, 'écoulement : Bernoulli', 'lbl-n small'), T(140, 92, 'au repos :', 'lbl-pg small'), T(140, 105, 'hydrostatique', 'lbl-pg small'),
+        dot(123, 60, 'node', 4), pulse(123, 60), dot(267, 60, 'node', 4), pulse(267, 60), T(16, 80, 'raccords : p_{g}', 'lbl-n small')
+      ].join('')),
+      cap: 'Bernoulli décrit l\'écoulement dans la conduite, l\'hydrostatique décrit le liquide immobile dans les tubes. On passe de l\'un à l\'autre aux prises (points bleus) grâce à la pression génératrice.'
+    };
+  };
+
+  F['p:pompe-ecrire-les-comptes'] = () => {
+    const D = 8, segs = [['Δz', 'c-pg', 40], ['Δ(p/ρg)', 'c-ps', 26], ['Δ(V²/2g)', 'c-pd', 14], ['pertes', 'c-loss', 22]];
+    let s = '', y0 = 150;
+    segs.forEach(([lab, c, h], i) => {
+      const a = .05 + i * .14, b = a + .1;
+      s += growUp(140, y0, 50, h, c, a, b, D) + shown(b, .96, D, T(198, y0 - h / 2 + 4, lab, 'small ' + c.replace('c-', 'lbl-')));
+      y0 -= h;
+    });
+    return {
+      svg: svg(360, 165, 'Hauteur manométrique d\'une pompe : somme des termes à fournir', [
+        '<line x1="120" y1="150" x2="290" y2="150" class="ax"/>', s,
+        shown(.62, .96, D, dimV(126, y0, 150, '') + T(118, (y0 + 150) / 2 + 4, 'H_{p}', 'end')),
+        shown(.75, .96, D, T(290, 22, '𝒫 = ρg H_{p} Q', 'mid lbl-pg small') + T(290, 38, 'η = 𝒫_{hydr}/𝒫_{méca}', 'mid lbl-m small'))
+      ].join('')),
+      cap: 'La pompe doit payer la montée, le gain de pression, le gain de vitesse et les pertes : leur somme est H_p. Ensuite seulement la puissance 𝒫 = ρgH_{p}Q, puis le rendement.'
+    };
+  };
+
+  F['p:pertes-une-vitesse-par-troncon'] = () => ({
+    svg: svg(360, 165, 'Deux tronçons de diamètres différents : vitesse, Re et pente de la ligne de charge propres à chacun', [
+      rect(20, 110, 160, 36, 'water'), rect(180, 119, 160, 18, 'water'), P('M20,110 L180,110 L180,119 L340,119 M20,146 L180,146 L180,137 L340,137', 'tank-thin'),
+      stream('M20,128 L180,128 L340,128', 4, 6, { r: 3, kp: '0;0.5;1', kt: '0;0.75;1' }),
+      '<path d="M20,30 L180,44 L180,56 L340,94" class="line-tot"/>', '<line x1="180" y1="44" x2="180" y2="56" class="line-loss"/>',
+      T(30, 72, 'tronçon 1 : V₁, Re₁, Λ₁', 'small'), T(30, 86, 'pente douce', 'lbl-loss small'), T(196, 40, 'tronçon 2 : V₂, Re₂, Λ₂', 'small'), T(190, 54, 'V² plus grand : pente forte', 'lbl-loss small'),
+      T(186, 106, 'k : singulière', 'lbl-loss small" style="font-size:9.5px'), T(180, 162, 'Δp = Λ (L/d) ρV²/2 avec la vitesse du tronçon', 'mid lbl-m small')
+    ].join('')),
+    cap: 'Chaque tronçon a sa vitesse, donc son Re, son régime et son Λ. La ligne de charge y descend avec sa propre pente : on ne factorise que les termes qui partagent la même vitesse.'
+  });
+
+  F['p:gaz-au-repos'] = () => {
+    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const col = (x0, n, cls) => { let s = ''; for (let k = 0; k < n; k++) { const x = (x0 + 8 + rnd() * 84).toFixed(1), y = (30 + rnd() * 108).toFixed(1); s += '<circle cx="' + x + '" cy="' + y + '" r="2.6" class="' + cls + '"><animateTransform attributeName="transform" type="translate" values="0 0;' + ((k % 3) - 1) * 3 + ' ' + ((k % 2) ? 3 : -3) + ';0 0" dur="' + (.7 + (k % 5) * .15) + 's"' + R + '/></circle>'; } return s; };
+    return {
+      svg: svg(360, 170, 'Deux colonnes de gaz au repos : la masse volumique dépend surtout de la température', [
+        rect(20, 24, 100, 120, 'probe'), col(20, 28, 'particle'), rect(140, 24, 100, 120, 'probe" style="fill:color-mix(in srgb, var(--load) 10%, var(--sheet))'), col(140, 14, 'particle hot'),
+        T(70, 160, 'froid : ρ grand', 'mid small'), T(190, 160, 'chaud : ρ petit', 'mid lbl-l small'),
+        T(256, 40, 'ρ = Mp/RT', ''), T(256, 70, 'Δp ≪ p', 'small'), T(256, 84, '⇒ ρ ≈ cste,', 'small'), T(256, 98, 'fixée par T', 'lbl-m small')
+      ].join('')),
+      cap: 'Dans un gaz au repos, la pression varie très peu sur la hauteur (Δp ≪ p) : la masse volumique ρ = Mp/RT ne dépend alors que de la température. Gaz froid, dense ; gaz chaud, léger.'
+    };
+  };
+
+  /* Les 4 boîtes de la répétition espacée */
+  function leitner() {
+    const D = 9, X = [40, 120, 200, 280], lab = ['maintenant', '1 jour', '3 jours', '7 jours'];
+    let s = '';
+    X.forEach((x, i) => { s += '<path d="M' + (x - 30) + ',60 L' + (x - 30) + ',100 L' + (x + 30) + ',100 L' + (x + 30) + ',60" class="tank-thin"/>' + T(x, 118, 'boîte ' + (i + 1), 'mid small') + T(x, 132, lab[i], 'mid lbl-m small'); });
+    const kt = '0;0.08;0.18;0.26;0.36;0.44;0.54;0.62;0.8;1';
+    s += '<g class="cf-mov"><rect x="-14" y="-10" width="28" height="20" rx="3" class="node" style="stroke-width:1.5"/><animateTransform attributeName="transform" type="translate" values="40 88;40 88;120 88;120 88;200 88;200 88;280 88;280 88;280 88;280 88" keyTimes="' + kt + '" dur="' + D + 's"' + R + '/>' + an('opacity', '1;1;1;1;1;1;1;1;0;0', D, kt) + '</g>';
+    s += '<g class="cf-mov"><rect x="-14" y="-10" width="28" height="20" rx="3" class="node" style="fill:var(--load);stroke-width:1.5"/><animateTransform attributeName="transform" type="translate" values="200 88;200 88;200 88;200 88;200 88;200 88;200 88;200 88;200 88;40 88" keyTimes="' + kt + '" dur="' + D + 's"' + R + '/>' + an('opacity', '0;0;0;0;0;0;0;0;1;1', D, kt) + '</g>';
+    s += '<rect x="106" y="78" width="28" height="20" rx="3" class="node cf-static" style="stroke-width:1.5"/>';
+    s += A(60, 40, 100, 40, 'arr-f', 7) + A(140, 40, 180, 40, 'arr-f', 7) + A(220, 40, 260, 40, 'arr-f', 7) + T(160, 22, '✓ je savais : boîte suivante', 'mid lbl-f small');
+    s += '<path d="M200,140 Q120,166 40,140" class="arr" style="stroke-dasharray:4 3"/>' + '<polygon points="40,140 50,139 46,147" class="arr head"/>' + T(120, 162, '↻ raté : retour en boîte 1', 'mid lbl-l small');
+    return svg(330, 168, 'Une carte sue avance d\'une boîte, une carte ratée retourne en boîte 1', s);
+  }
+
+  function hydrate(node) {
+    if (RM) node.querySelectorAll('animate, animateMotion, animateTransform, set').forEach((a) => a.remove());
+    return node;
+  }
+  function make(id) {
+    const f = F[id]; if (!f) return null;
+    const o = f();
+    const fig = document.createElement('figure'); fig.className = 'cfig';
+    fig.innerHTML = o.svg + (o.cap ? '<figcaption></figcaption>' : '');
+    if (o.cap) fig.querySelector('figcaption').innerHTML = esc(o.cap).replace(/_\{([^}]*)\}|_([A-Za-z]+)/g, (m, a, b) => '<sub>' + (a || b) + '</sub>');
+    return hydrate(fig);
+  }
+  return { make, leitner: () => { const d = document.createElement('figure'); d.className = 'cfig leitner'; d.innerHTML = leitner(); return hydrate(d); }, ids: () => Object.keys(F) };
+})();
+
 /* ---------- Cartes mémoire (répétition espacée, 4 boîtes) ---------- */
 (function cards() {
   const host = $('kit-cards'); if (!host) return;
@@ -3261,7 +4046,7 @@ if (Q.length) {
   document.querySelectorAll('.notation dl > div').forEach((dv) => { const dt = dv.querySelector('dt'), dd = dv.querySelector('dd'); if (dt && dd) CARDS.push({ deck: 'methode', id: 'n:' + slug(dt.textContent), qhtml: dt.innerHTML, q: dt.textContent.trim(), hint: CFG.notationHint, a: () => body(dd), link: dv.closest('.notation') }); });
   document.querySelectorAll('.exam-flow > div').forEach((dv) => { const b = dv.querySelector('b'), s = dv.querySelector('span'); if (b && s) CARDS.push({ deck: 'methode', id: 'e:' + slug(b.textContent), q: b.textContent.trim(), hint: 'Que faut-il faire à cette étape du médian ?', a: () => body(s), link: dv.closest('.sub') || dv }); });
   document.querySelectorAll('.pressures > div').forEach((dv) => { const b = dv.querySelector('b'); if (b) CARDS.push({ deck: 'methode', id: 'pr:' + slug(b.textContent), q: 'Pression ' + b.textContent.trim().toLowerCase(), hint: 'Son expression, et ce qu\'elle représente ?', a: () => body(dv, 'b'), link: dv.closest('.recipe') || dv }); });
-  Q.forEach((q) => { const ans = q.d.querySelector('.ans'); if (ans) CARDS.push({ deck: 'exercices', id: 'x:' + q.id, q: q.label, ctx: q.ex.kitTitle, hint: 'Pose la méthode (modèle, équations, application numérique), puis compare.', a: () => body(ans, '.qmark'), link: q.d }); });
+  Q.forEach((q) => { const ans = q.d.querySelector('.ans'); if (ans) CARDS.push({ deck: 'exercices', id: 'x:' + q.id, q: q.label, ctx: q.ex.kitTitle, ex: q.ex, hint: 'Pose la méthode (modèle, équations, application numérique), puis compare.', a: () => body(ans, '.qmark'), link: q.d }); });
   if (!CARDS.length) return;
 
   const INTERVAL = [0, 0, 1, 3, 7]; // jours avant la prochaine revue, par boîte
@@ -3280,6 +4065,21 @@ if (Q.length) {
     h('button', { class: 'lnk', type: 'button', onclick: () => start(false) }, 'Mélanger à nouveau'),
     h('button', { class: 'lnk danger', type: 'button', onclick: () => { if (confirm('Oublier l\'historique des cartes de cette page ?')) { for (const k in LZ) delete LZ[k]; store.set('cards', LZ); start(false); } } }, 'Réinitialiser les cartes'));
   host.append(deckRow, stats, stage, more);
+  const intro = host.parentElement && host.parentElement.querySelector('.prose');
+  if (intro) intro.after(CARD_FIG.leitner());
+  // Recto d'une carte d'exercice : la figure et l'énoncé de l'exercice, pour savoir de quoi parle la question
+  function statement(ex) {
+    const box = h('div', { class: 'exfig' });
+    const fig = ex.querySelector('.ex-fig svg');
+    if (fig) { const sv = fig.cloneNode(true); sv.removeAttribute('id'); box.append(h('div', { class: 'ex-fig' }, sv)); }
+    const ps = [...ex.querySelectorAll('.ex-statement > p')];
+    if (ps.length) {
+      const d = h('details', null, h('summary', null, 'Rappel de l\'énoncé'), h('div'));
+      ps.forEach((p) => d.lastChild.append(p.cloneNode(true)));
+      box.append(d);
+    }
+    return box.childNodes.length ? box : null;
+  }
 
   function paintStats() {
     const p = pool(); const d = p.filter(due).length; const top = p.filter((c) => LZ[c.id] && LZ[c.id].b >= 4).length;
@@ -3321,10 +4121,12 @@ if (Q.length) {
     const card = h('div', { class: 'card', tabindex: '-1' }, top);
     if (!flipped) {
       const qt = h('div', { class: 'qt' }); if (c.qhtml) qt.innerHTML = c.qhtml; else qt.textContent = c.q;
-      card.append(h('div', { class: 'face q' }, qt, h('div', { class: 'hint' }, c.hint)),
+      const face = h('div', { class: 'face q' }, qt, h('div', { class: 'hint' }, c.hint), c.ex ? statement(c.ex) : null);
+      card.append(face,
         h('div', { class: 'acts' }, h('button', { class: 'btn primary', type: 'button', onclick: () => { flipped = true; render(); } }, 'Retourner', h('kbd', null, 'espace')), h('span', { class: 'sp' }), h('button', { class: 'btn', type: 'button', onclick: () => { pos++; render(); } }, 'Passer')));
+      if (c.ex) typeset(face);
     } else {
-      const a = c.a(); const face = h('div', { class: 'face a' }, h('p', { class: 'hint' }, c.q), a);
+      const a = c.a(); const face = h('div', { class: 'face a' }, h('p', { class: 'hint' }, c.q), CARD_FIG.make(c.id), a);
       card.append(face,
         h('div', { class: 'acts' },
           h('button', { class: 'btn bad', type: 'button', onclick: () => grade(false) }, '↻ À revoir', h('kbd', null, '←')),
