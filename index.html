@@ -4148,8 +4148,8 @@ const CARD_FIG = (function () {
 })();
 
 /* ---------- Schémas animés des corrections (TD et médians) ----------
-   ANS_FIG['ex-td9-q1'] = () => ({ svg, cap }) : le schéma est ajouté à la fin de la correction,
-   et suit donc la question jusque dans les cartes mémoire du paquet Exercices. */
+   ANS_FIG['ex-td9-q1'] = () => ({ svg, cap }) : le schéma prend la place d'un <div class="figslot"></div>
+   de la correction (sinon il va à la fin) et suit la question jusque dans les cartes mémoire du paquet Exercices. */
 const ANS_FIG = {};
 (function (K) {
   const { T, an, show, shown, before, fadeOut, A, P, fl, mov, stream, draw, surf, dimV, dot, pulse, rect, growUp, pump, bubbles, svg, n1 } = K;
@@ -4179,7 +4179,9 @@ const ANS_FIG = {};
 })(CARD_FIG.kit);
 Q.forEach((q) => {
   const f = ANS_FIG[q.id], ans = q.d.querySelector('.ans');
-  if (f && ans) ans.insertBefore(CARD_FIG.build(f()), ans.querySelector('.qmark'));
+  if (!f || !ans) return;
+  const fig = CARD_FIG.build(f()), slot = ans.querySelector('.figslot'); // emplacement choisi dans la correction, sinon à la fin
+  if (slot) slot.replaceWith(fig); else ans.insertBefore(fig, ans.querySelector('.qmark'));
 });
 
 /* ---------- Cartes mémoire (répétition espacée, 4 boîtes) ---------- */
