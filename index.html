@@ -262,7 +262,7 @@ table.mat td.neg { color: var(--comp); }
 .dots button.on { background: var(--node); border-color: var(--node); }
 
 /* ------- SVG ------- */
-svg text { font-family: var(--f-mono); fill: var(--ink); font-size: 13px; }
+:where(.stage, .hero-fig, .cfig) svg text { font-family: var(--f-mono); fill: var(--ink); font-size: 13px; } /* schémas seulement : sinon les lettres accentuées des formules MathJax disparaissent */
 svg text.lbl-m { fill: var(--muted); font-size: 12px; }
 svg text.lbl-n { fill: var(--node); font-weight: 600; }
 svg text.lbl-l { fill: var(--load); font-weight: 600; }
