@@ -354,6 +354,18 @@ footer { padding-block: 40px 60px; color: var(--muted); font-size: 13.5px; }
 .ex-qs details[open] summary::after { content: "Masquer"; }
 @media (max-width: 520px) { .ex-qs summary { grid-template-columns: auto minmax(0, 1fr); } .ex-qs summary::after { display: none; } }
 .ans { padding: 2px 16px 14px; display: grid; gap: 10px; font-size: 15px; border-top: 1px dashed var(--rule); padding-top: 12px; max-width: 86ch; }
+/* Cours : démonstrations et exemples chiffrés dépliables */
+.calc { background: var(--sheet); border: 1px solid var(--rule); border-left: 4px solid var(--node); border-radius: 10px; margin-top: 14px; min-width: 0; }
+.calc + .calc { margin-top: 10px; }
+.calc > summary { cursor: pointer; padding: 11px 14px; font-family: var(--f-display); font-stretch: 85%; font-size: 17px; font-weight: 700; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+.calc > summary::-webkit-details-marker { display: none; }
+.calc > summary::before { content: "▸"; color: var(--node); transition: transform .2s; display: inline-block; }
+.calc[open] > summary::before { transform: rotate(90deg); }
+.calc > summary .kind { font-family: var(--f-mono); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--node); }
+.calc.ex { border-left-color: var(--pg); } .calc.ex > summary::before, .calc.ex > summary .kind { color: var(--pg); }
+.calc > div { padding: 2px 16px 14px; display: grid; gap: 10px; font-size: 15.5px; border-top: 1px dashed var(--rule); padding-top: 12px; max-width: 90ch; overflow-x: auto; min-width: 0; }
+.calc .note { font-size: 13.5px; color: var(--muted); background: var(--paper); border-radius: 8px; padding: 8px 10px; }
+@media (prefers-reduced-motion: reduce) { .calc > summary::before { transition: none; } }
 .ans .note { font-size: 13.5px; color: var(--muted); background: var(--paper); border-radius: 8px; padding: 8px 10px; }
 .mirror-ghost { opacity: .32; }
 .mdiag { fill: color-mix(in srgb, var(--fe) 22%, transparent); stroke: var(--fe); stroke-width: 2; }
@@ -6721,6 +6733,11 @@ Q.forEach((q) => {
   const fig = CARD_FIG.build(f()), slot = ans.querySelector('.figslot'); // emplacement choisi dans la correction, sinon à la fin
   if (slot) slot.replaceWith(fig); else ans.insertBefore(fig, ans.querySelector('.qmark'));
 });
+
+/* ---------- Schémas animés des démonstrations du cours (chapitres A à D) ----------
+   COURS_FIG['a-loi-1'] = () => ({ svg, cap }) remplace <div class="figslot" data-fig="a-loi-1"></div>. */
+const COURS_FIG = {};
+document.querySelectorAll('.figslot[data-fig]').forEach((slot) => { const f = COURS_FIG[slot.dataset.fig]; if (f) slot.replaceWith(CARD_FIG.build(f())); });
 
 /* ---------- Cartes mémoire (répétition espacée, 4 boîtes) ---------- */
 (function cards() {
