@@ -571,7 +571,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--rule)
 /* Impression : le formulaire tient sur une feuille, les corrections sont dépliées */
 @page { margin: 13mm; }
 @media print {
-  .chapters, .btns, .ctl, .qmark, .prog, #cartes, .tbtn, .kit-dialog, .ex-prog, input[type="range"], .where { display: none !important; }
+  .chapters, .btns, .ctl, .qmark, .prog, #cartes, .ans .cfig, .tbtn, .kit-dialog, .ex-prog, input[type="range"], .where { display: none !important; }
   .ex-qs summary::after { content: none !important; }
   html { scroll-behavior: auto; }
   body { background: #fff; color: #000; font-size: 11pt; line-height: 1.45; }
@@ -4136,16 +4136,51 @@ const CARD_FIG = (function () {
     if (RM) node.querySelectorAll('animate, animateMotion, animateTransform, set').forEach((a) => a.remove());
     return node;
   }
-  function make(id) {
-    const f = F[id]; if (!f) return null;
-    const o = f();
+  function build(o) { // { svg, cap } → <figure class="cfig">
     const fig = document.createElement('figure'); fig.className = 'cfig';
     fig.innerHTML = o.svg + (o.cap ? '<figcaption></figcaption>' : '');
     if (o.cap) fig.querySelector('figcaption').innerHTML = esc(o.cap).replace(/_\{([^}]*)\}|_([A-Za-z]+)/g, (m, a, b) => '<sub>' + (a || b) + '</sub>');
     return hydrate(fig);
   }
-  return { make, leitner: () => { const d = document.createElement('figure'); d.className = 'cfig leitner'; d.innerHTML = leitner(); return hydrate(d); }, ids: () => Object.keys(F) };
+  const make = (id) => (F[id] ? build(F[id]()) : null);
+  const kit = { RM, n1, esc, T, an, show, shown, before, fadeOut, g, A, P, fl, mov, stream, draw, surf, dimV, dot, pulse, rect, growUp, pump, bubbles, svg, budget, siphon };
+  return { make, build, kit, leitner: () => { const d = document.createElement('figure'); d.className = 'cfig leitner'; d.innerHTML = leitner(); return hydrate(d); }, ids: () => Object.keys(F) };
 })();
+
+/* ---------- Schémas animés des corrections (TD et médians) ----------
+   ANS_FIG['ex-td9-q1'] = () => ({ svg, cap }) : le schéma est ajouté à la fin de la correction,
+   et suit donc la question jusque dans les cartes mémoire du paquet Exercices. */
+const ANS_FIG = {};
+(function (K) {
+  const { T, an, show, shown, before, fadeOut, A, P, fl, mov, stream, draw, surf, dimV, dot, pulse, rect, growUp, pump, bubbles, svg, n1 } = K;
+  const R = ' repeatCount="indefinite"';
+  ANS_FIG['ex-td9-q1'] = () => {
+    const D = 8;
+    const sl = 'M70,70 C66,140 120,160 120,140 L120,30 Q120,18 132,18 L190,18 Q202,18 202,30 L202,178';
+    const tube = 'M120,146 L120,30 Q120,18 132,18 L190,18 Q202,18 202,30 L202,172';
+    const seg = (cls, yA, hA, yB, hB) => '<rect x="300" width="22" class="' + cls + '" y="' + yB + '" height="' + hB + '">' + an('y', yA + ';' + yA + ';' + yB + ';' + yB, D, '0;0.3;0.55;1') + an('height', hA + ';' + hA + ';' + hB + ';' + hB, D, '0;0.3;0.55;1') + '</rect>';
+    return {
+      svg: svg(360, 196, 'Siphon : budget de pression de la surface A au sommet B, limité par la pression de vapeur', [
+        rect(20, 70, 140, 90, 'water'), P('M20,46 L20,160 L160,160 L160,46', 'tank'), surf(20, 160, 70),
+        P(tube, 'tank', ' style="stroke-width:12"'), P(tube, 'tank', ' style="stroke-width:7;stroke:var(--water-deep)"'),
+        draw(sl, 'line-ps', .02, .3, D), mov('M70,70 C66,140 120,160 120,140 L120,30 Q120,18 132,18 L161,18', D, { r: 4.5, c: 'particle hot', kp: '0;0;1;1', kt: '0;0.3;0.55;1' }),
+        dot(70, 70) + T(54, 64, 'A', 'lbl-n'), dot(161, 18) + T(156, 40, 'B', 'lbl-n'), dimV(222, 18, 70, '4 m'),
+        '<line x1="160" y1="70" x2="232" y2="70" class="lvl"/>',
+        // budget en B : p_atm = p_B + ρg·4 + ½ρV²
+        '<line x1="312" y1="164" x2="348" y2="164" class="ax"/>',
+        seg('c-pg', 164, 0, 124, 40).replace(/x="300"/, 'x="320"'), seg('c-pd', 164, 0, 22, 102).replace(/x="300"/, 'x="320"'), seg('c-ps', 24, 140, 22, 2).replace(/x="300"/, 'x="320"'),
+        '<line x1="312" y1="24" x2="348" y2="24" class="line-tot"/>', T(331, 16, 'p_{atm}', 'mid small'),
+        T(314, 150, 'ρg·4 m', 'end lbl-pg small'), shown(.55, .97, D, T(314, 80, '½ρV*²', 'end lbl-pd small') + T(314, 30, 'p_{vs}', 'end lbl-l small')),
+        shown(.6, .97, D, T(226, 96, 'p_{B} = p_{vs}', 'lbl-l small') + T(216, 178, 'V* = 10,9 m/s', 'small') + T(216, 191, 'Q* = 85 L/s', 'lbl-n small'))
+      ].join('')),
+      cap: 'Entre A et le sommet B, la charge reste p_{atm} : il faut payer la montée de 4 m (vert) et l\'énergie cinétique (magenta) en prenant sur p. Le débit est maximal quand p_B tombe à p_{vs} : il ne reste presque plus de bleu.'
+    };
+  };
+})(CARD_FIG.kit);
+Q.forEach((q) => {
+  const f = ANS_FIG[q.id], ans = q.d.querySelector('.ans');
+  if (f && ans) ans.insertBefore(CARD_FIG.build(f()), ans.querySelector('.qmark'));
+});
 
 /* ---------- Cartes mémoire (répétition espacée, 4 boîtes) ---------- */
 (function cards() {
